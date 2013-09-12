@@ -93,6 +93,8 @@ fn main() {
     let config = Config::load(&config_path);
 
     let mut already_built = HashSet::new();
+
+    // FIXME: allow this to be created automagically.
     let already_built_file = file::open(&already_built_path, Append, ReadWrite);
 
     let mut already_built_file =
