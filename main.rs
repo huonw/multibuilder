@@ -22,13 +22,21 @@ pub mod task_worker;
 
 #[deriving(Encodable, Decodable)]
 struct Config {
-    // the maximum number of builders to run in tasks in this
-    // executable.
+    /// the maximum number of builders to run in tasks in this
+    /// executable.
     num_local_builders: Option<uint>,
-    // the directory in which a directory is created for each commit.
+    /// the directory in which a directory is created for each commit.
     build_parent_dir: ~str,
-    // the repository to bench.
+    /// the repository to bench.
     main_repo: ~str,
+    /// the commands to run when building.
+    build_commands: ~[Command]
+}
+
+#[deriving(Encodable, Decodable, Clone)]
+pub struct Command {
+    name: ~str,
+    args: ~[~str]
 }
 
 impl Config {
@@ -49,9 +57,9 @@ fn main() {
     let args = std::os::args();
 
     let opts =
-        ~[groups::optopt("c", "config", "configuration file (default config.json)", "PATH"),
+        ~[groups::optopt("c", "config", "configuration file (default ./config.json)", "PATH"),
           groups::optopt("a", "already-built",
-                         "file of hashes already built (default already-built.txt)", "PATH"),
+                         "file of hashes already built (default ./already-built.txt)", "PATH"),
           groups::optflag("h", "help", "show this help message")];
 
     let (config_path, already_built_path) = match groups::getopts(args.tail(), opts) {
@@ -103,6 +111,7 @@ fn main() {
 
     let build_dir = Path(config.build_parent_dir);
     let main_repo = Arc::new(Repo::new(Path(config.main_repo)));
+    let build_commands = Arc::new(config.build_commands.clone());
 
     let mut walker = CommitWalker::new(main_repo.get(), already_built, already_built_file);
 
@@ -114,7 +123,9 @@ fn main() {
         match walker.find_unbuilt_commit() {
             None => break,
             Some(hash) => {
-                let worker = task_worker::TaskWorker::new(build_dir.clone(), main_repo.clone());
+                let worker = task_worker::TaskWorker::new(build_dir.clone(),
+                                                          main_repo.clone(),
+                                                          build_commands.clone());
 
                 info2!("Sending {} to worker {}", hash.value, i);
                 worker.stream.send(build::BuildHash(hash));
