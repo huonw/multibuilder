@@ -24,3 +24,11 @@ builder mid-operation. It must exist.
 
 The location of `config.json` and `already_built.txt` can be
 controlled with `-c` and `-a` respectively.
+
+## TODO
+
+- git2-rs
+- grease-bench to benchmark automatically
+- handle pulling to get new commits
+- manual rebuild/bench of specific commits.
+- support distributed builds
