@@ -1,5 +1,5 @@
 extern mod extra;
-use std::{io, str};
+use std::{io, str, run, os};
 use std::hashmap::HashSet;
 use std::rt::io::{Writer, Append, ReadWrite};
 use std::rt::io::file;
@@ -27,6 +27,16 @@ struct Config {
     num_local_builders: Option<uint>,
     /// the directory in which a directory is created for each commit.
     build_parent_dir: ~str,
+
+    /// the directory in which the final output is placed.
+    // FIXME: optional?
+    output_parent_dir: ~str,
+
+    /// the directory/file which is moved to
+    /// `output_parent_dir/<hash>` from the build dir
+    // FIXME: optional? and just move the whole <hash> dir to
+    // output_parent_dir
+    output_move: ~str,
     /// the repository to bench.
     main_repo: ~str,
     /// the commands to run when building.
@@ -112,7 +122,21 @@ fn main() {
     println!("Running with max {} workers", num_workers);
 
     let build_dir = Path(config.build_parent_dir);
-    let main_repo = Arc::new(Repo::new(Path(config.main_repo)));
+    if !os::path_is_dir(&build_dir) {
+        fail2!("`{}` is not a directory", build_dir.to_str())
+    }
+
+    let main_repo_dir = Path(config.main_repo);
+    if !os::path_is_dir(&main_repo_dir) {
+        fail2!("`{}` is not a directory", main_repo_dir.to_str())
+    }
+    let main_repo = Arc::new(Repo::new(main_repo_dir));
+
+    let output_dir = Path(config.output_parent_dir);
+    if !os::path_is_dir(&output_dir) {
+        fail2!("`{}` is not a directory", output_dir.to_str())
+    }
+
     let build_commands = Arc::new(config.build_commands.clone());
 
     let mut walker = CommitWalker::new(main_repo.get(), already_built, already_built_file);
@@ -158,8 +182,44 @@ fn main() {
                         walker.register_built(hash.clone());
                     }
                     // \o/ we won!
-                    Some(build::Success(_loc, hash)) => {
+                    Some(build::Success(loc, hash)) => {
                         println!("{} succeeded.", hash.value);
+                        let suboutput_dir = output_dir.push(hash.value);
+
+                        // create the final output directory.
+                        let mkdir = run::process_output("mkdir",
+                                                        [~"-p", suboutput_dir.to_str()]);
+                        if mkdir.status != 0 { // meh, it's late.
+                            fail2!("<error message>")
+                        }
+
+                        match loc {
+                            build::Local(p) => {
+                                // move some subdirectory of the final
+                                // output (in `p`) to the appropriate
+                                // place.
+                                let move_from = p.push(config.output_move);
+
+                                // move what we want.
+                                let mv = run::process_output("mv",
+                                                             [move_from.to_str(),
+                                                              suboutput_dir.to_str()]);
+                                if mv.status != 0 {
+                                    fail2!("<error message[2]> {} {}",
+                                           str::from_utf8(mv.output),
+                                           str::from_utf8(mv.error))
+                                }
+
+                                // delete the build dir.
+                                let rm = run::process_output("rm",
+                                                             [~"-rf",
+                                                              p.to_str()]);
+                                if rm.status != 0 {
+                                    fail2!("<error message[3]>")
+                                }
+                            }
+                        }
+
                         walker.register_built(hash.clone());
                     }
                 }
@@ -181,7 +241,7 @@ fn main() {
         if !found_a_message {
             // no need to busy wait
             let mut timer = timer::Timer::new().expect("No timer??");
-            timer.sleep(5000);
+            timer.sleep(500);
         }
     }
 }
