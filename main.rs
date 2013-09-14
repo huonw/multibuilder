@@ -28,19 +28,24 @@ struct Config {
     /// the directory in which a directory is created for each commit.
     build_parent_dir: ~str,
 
-    /// the directory in which the final output is placed.
-    // FIXME: optional?
-    output_parent_dir: ~str,
+    /// information about where to move (a subset of) the build
+    /// artifacts. `None` for no movement.
+    output: Option<OutputMovement>,
 
-    /// the directory/file which is moved to
-    /// `output_parent_dir/<hash>` from the build dir
-    // FIXME: optional? and just move the whole <hash> dir to
-    // output_parent_dir
-    output_move: ~str,
     /// the repository to bench.
     main_repo: ~str,
     /// the commands to run when building.
     build_commands: ~[Command]
+}
+
+#[deriving(Encodable, Decodable)]
+struct OutputMovement {
+    /// The directory to place the <hash> directory which the
+    /// `to_move` files get placed in.
+    parent_dir: ~str,
+    /// The files/directories to move from the build dir to
+    /// `parent_dir/<hash>/`.
+    to_move: ~[~str]
 }
 
 #[deriving(Encodable, Decodable, Clone)]
@@ -132,9 +137,15 @@ fn main() {
     }
     let main_repo = Arc::new(Repo::new(main_repo_dir));
 
-    let output_dir = Path(config.output_parent_dir);
-    if !os::path_is_dir(&output_dir) {
-        fail2!("`{}` is not a directory", output_dir.to_str())
+    // check the dir exists
+    match config.output {
+        None => {}
+        Some(ref output) => {
+            let output_dir = Path(output.parent_dir);
+            if !os::path_is_dir(&output_dir) {
+                fail2!("`{}` is not a directory", output_dir.to_str())
+            }
+        }
     }
 
     let build_commands = Arc::new(config.build_commands.clone());
@@ -184,38 +195,48 @@ fn main() {
                     // \o/ we won!
                     Some(build::Success(loc, hash)) => {
                         println!("{} succeeded.", hash.value);
-                        let suboutput_dir = output_dir.push(hash.value);
 
-                        // create the final output directory.
-                        let mkdir = run::process_output("mkdir",
-                                                        [~"-p", suboutput_dir.to_str()]);
-                        if mkdir.status != 0 { // meh, it's late.
-                            fail2!("<error message>")
-                        }
+                        // FIXME: break this out.
+                        match config.output {
+                            None => {}
+                            Some(ref output) => {
+                                let suboutput_dir = Path(output.parent_dir).push(hash.value);
 
-                        match loc {
-                            build::Local(p) => {
-                                // move some subdirectory of the final
-                                // output (in `p`) to the appropriate
-                                // place.
-                                let move_from = p.push(config.output_move);
-
-                                // move what we want.
-                                let mv = run::process_output("mv",
-                                                             [move_from.to_str(),
-                                                              suboutput_dir.to_str()]);
-                                if mv.status != 0 {
-                                    fail2!("<error message[2]> {} {}",
-                                           str::from_utf8(mv.output),
-                                           str::from_utf8(mv.error))
+                                // create the final output directory.
+                                let mkdir = run::process_output("mkdir",
+                                                                [~"-p", suboutput_dir.to_str()]);
+                                if mkdir.status != 0 { // meh, it's late.
+                                        fail2!("<error message>")
                                 }
 
-                                // delete the build dir.
-                                let rm = run::process_output("rm",
-                                                             [~"-rf",
-                                                              p.to_str()]);
-                                if rm.status != 0 {
-                                    fail2!("<error message[3]>")
+                                match loc {
+                                    build::Local(p) => {
+                                        // move some subdirectory of the final
+                                        // output (in `p`) to the appropriate
+                                        // place.
+                                        let mut move_args = do output.to_move.map |s| {
+                                            p.push(*s).to_str()
+                                        };
+                                        move_args.push(~"-t");
+                                        move_args.push(suboutput_dir.to_str());
+
+                                        // move what we want.
+                                        let mv = run::process_output("mv", move_args);
+
+                                        if mv.status != 0 {
+                                            fail2!("<error message[2]> {} {}",
+                                                   str::from_utf8(mv.output),
+                                                   str::from_utf8(mv.error))
+                                        }
+
+                                        // delete the build dir.
+                                        let rm = run::process_output("rm",
+                                                                     [~"-rf",
+                                                                      p.to_str()]);
+                                        if rm.status != 0 {
+                                            fail2!("<error message[3]>")
+                                        }
+                                    }
                                 }
                             }
                         }

@@ -8,8 +8,10 @@ Example configuration:
     {
         "num_local_builders": 10,
         "build_parent_dir": "build",
-        "output_parent_dir": "output",
-        "output_move": "objects/final_binary",
+        "output": {
+            "parent_dir": "output_dir",
+            "to_move": ["objects/final_binary", "objects/associated_file"],
+        },
         "main_repo": "test",
         "build_commands": [
             {"name": "./configure", "args": []},
@@ -19,10 +21,12 @@ Example configuration:
 
 This will run (at most) 10 builder tasks that checkout `./test` into
 `./build/<hash>` and run `./configure` then `make` in that
-directory. If this is successful,
-`./build/<hash>/objects/final_binary` file is moved to
-`./output/<hash>/final_binary` and the `./build/<hash>` directory
-deleted. (`output_move` can be a directory or a file.)
+directory. Since `output` is not `null`, the build being successful
+will mean that the
+`./build/<hash>/objects/{final_binary,associated_file` files are moved
+to `./output_dir/<hash>/<filename>` and the `./build/<hash>` directory
+deleted (the elements of `to_move` can be directories or files). If
+`output` is `null`, nothing is moved or deleted.
 
 Hashes that have already been built are stored in `already_built.txt`;
 this file is updated progressively, and so it is safe to just kill the
