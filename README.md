@@ -42,3 +42,8 @@ controlled with `-c` and `-a` respectively.
 - handle pulling to get new commits
 - manual rebuild/bench of specific commits.
 - support distributed builds
+- support running a command after a certain number of builds and
+  provide the directories/hashes of the most recently built commits
+  (e.g. it calls `bench-script 56da5f65..1314 12313..545 a0f9..123`
+  with all the hashes it built in the most recent run). This would
+  have to wait for all builds to finish before calling this script.
