@@ -11,6 +11,7 @@ use extra::json;
 use extra::serialize::Decodable;
 use extra::getopts;
 use extra::getopts::groups;
+use extra::glob::{GlobIterator, glob};
 
 use git::{Repo, Sha};
 use commit_walker::CommitWalker;
@@ -118,7 +119,7 @@ fn main() {
     let text = str::from_utf8_owned(already_built_file.read_to_end());
 
     for hash in text.line_iter() {
-        already_built.insert(git::Sha { value: hash.to_owned() });
+        already_built.insert(git::Sha { value: hash.split_iter(':').next().unwrap().to_owned() });
     }
 
     println!("Found {} already built commits", already_built.len());
@@ -190,7 +191,7 @@ fn main() {
                     Some(build::Failure(hash)) => {
                         println!("{} failed.", hash.value);
 
-                        walker.register_built(hash.clone());
+                        walker.register_built(hash.clone(), false);
                     }
                     // \o/ we won!
                     Some(build::Success(loc, hash)) => {
@@ -206,7 +207,8 @@ fn main() {
                                 let mkdir = run::process_output("mkdir",
                                                                 [~"-p", suboutput_dir.to_str()]);
                                 if mkdir.status != 0 { // meh, it's late.
-                                        fail2!("<error message>")
+                                        fail2!("mkdir failed on {} with {}", suboutput_dir.to_str(),
+                                               std::str::from_utf8(mkdir.error));
                                 }
 
                                 match loc {
@@ -214,9 +216,10 @@ fn main() {
                                         // move some subdirectory of the final
                                         // output (in `p`) to the appropriate
                                         // place.
-                                        let mut move_args = do output.to_move.map |s| {
-                                            p.push(*s).to_str()
-                                        };
+                                        let mut move_args: ~[~str] = do output.to_move.map |s| {
+                                            let glob = glob(p.push(*s).to_str());
+                                            glob.map(|x| x.to_str()).to_owned_vec()
+                                        }.concat_vec();
                                         move_args.push(~"-t");
                                         move_args.push(suboutput_dir.to_str());
 
@@ -224,7 +227,7 @@ fn main() {
                                         let mv = run::process_output("mv", move_args);
 
                                         if mv.status != 0 {
-                                            fail2!("<error message[2]> {} {}",
+                                            fail2!("mv failed with {} {}",
                                                    str::from_utf8(mv.output),
                                                    str::from_utf8(mv.error))
                                         }
@@ -234,14 +237,15 @@ fn main() {
                                                                      [~"-rf",
                                                                       p.to_str()]);
                                         if rm.status != 0 {
-                                            fail2!("<error message[3]>")
+                                            fail2!("rm failed on {} with {}", p.to_str(),
+                                                   std::str::from_utf8(rm.error));
                                         }
                                     }
                                 }
                             }
                         }
 
-                        walker.register_built(hash.clone());
+                        walker.register_built(hash.clone(), true);
                     }
                 }
                 // get back to work!

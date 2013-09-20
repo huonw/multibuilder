@@ -23,10 +23,14 @@ impl<'self> CommitWalker<'self> {
         }
     }
 
-    pub fn register_built(&mut self, hash: Sha) {
+    pub fn register_built(&mut self, hash: Sha, success: bool) {
         self.in_progress.remove(&hash);
 
         self.already_built_file.write(hash.value.as_bytes());
+        self.already_built_file.write(bytes!(":"));
+        self.already_built_file.write(match success {
+                                      true  => bytes!("success"),
+                                      false => bytes!("failure") });
         self.already_built_file.write(bytes!("\n"));
 
         self.already_built.insert(hash);
