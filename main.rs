@@ -178,6 +178,7 @@ fn main() {
         // we need to remove items mid-iteration.
         // FIXME using select + a timeout would be nicer here?
         let mut found_a_message = false;
+        let term = extra::term::Terminal::new(std::io::stdout()).unwrap();
         'scanner: for i in range(0, workers.len()) {
             if workers[i].stream.peek() {
                 found_a_message = true;
@@ -188,13 +189,17 @@ fn main() {
                     None => { workers.swap_remove(i); },
                     // it was the crushing disappointment of failure. :(
                     Some(build::Failure(hash)) => {
+                        term.fg(extra::term::color::RED);
                         println!("{} failed.", hash.value);
+                        term.reset();
 
                         walker.register_built(hash.clone(), false);
                     }
                     // \o/ we won!
                     Some(build::Success(loc, hash)) => {
+                        term.fg(extra::term::color::GREEN);
                         println!("{} succeeded.", hash.value);
+                        term.reset();
 
                         // FIXME: break this out.
                         match config.output {
