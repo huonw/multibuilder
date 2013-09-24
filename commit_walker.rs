@@ -44,6 +44,8 @@ impl<'self> CommitWalker<'self> {
             _
         } = *self;
 
+        repo.pull("mozilla", "master"); // TODO: make configurable
+
         match next_candidate.take() {
             None => None,
             Some(hash) => {

@@ -82,6 +82,19 @@ impl Repo {
         status == 0
     }
 
+    /// Pull from a remote
+    pub fn pull(&self, remote: &str, branch: &str) -> bool {
+        let run::ProcessOutput { status, output, error } =
+            self.exec("git", [~"pull", remote.to_owned(), branch.to_owned()]);
+        if status != 0 {
+            warn2!("Repo.pull failed with {}: {} {}",
+                   status,
+                   str::from_utf8(output),
+                   str::from_utf8(error));
+        }
+        status == 0
+    }
+
     /// Run the given command with the given args in the root of this
     /// git repo.
     pub fn exec(&self, name: &str, args: &[~str]) -> run::ProcessOutput {
