@@ -79,25 +79,24 @@ fn main() {
           groups::optflag("h", "help", "show this help message")];
 
     let (config_path, already_built_path) = match groups::getopts(args.tail(), opts) {
-        Err(err) => fail!(getopts::fail_str(err)),
+        Err(err) => fail!(err.to_err_msg()),
         Ok(matches) => {
-            if getopts::opt_present(&matches, "h") ||
-                getopts::opt_present(&matches, "help") {
+            if matches.opt_present("h") || matches.opt_present("help") {
                 println(groups::usage(args[0], opts));
                 return;
             }
 
-            let cfg = if getopts::opt_present(&matches, "c") {
-                Path(getopts::opt_str(&matches, "c"))
-            } else if getopts::opt_present(&matches, "config") {
-                Path(getopts::opt_str(&matches, "config"))
+            let cfg = if matches.opt_present("c") {
+                Path(matches.opt_str("c").unwrap())
+            } else if matches.opt_present("config") {
+                Path(matches.opt_str("config").unwrap())
             } else {
                 Path("config.json")
             };
-            let built = if getopts::opt_present(&matches, "a") {
-                Path(getopts::opt_str(&matches, "a"))
-            } else if getopts::opt_present(&matches, "already-built") {
-                Path(getopts::opt_str(&matches, "already-built"))
+            let built = if matches.opt_present("a") {
+                Path(matches.opt_str("a").unwrap())
+            } else if matches.opt_present("already-built") {
+                Path(matches.opt_str("already-built").unwrap())
             } else {
                 Path("already-built.txt")
             };
