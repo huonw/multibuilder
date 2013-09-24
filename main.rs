@@ -224,16 +224,14 @@ fn main() {
                                             let glob = glob(p.push(*s).to_str());
                                             glob.map(|x| x.to_str()).to_owned_vec()
                                         }.concat_vec();
-                                        move_args.push(~"-t");
+                                        move_args.push(~"-vt");
                                         move_args.push(suboutput_dir.to_str());
 
                                         // move what we want.
                                         let mv = run::process_output("mv", move_args);
-
                                         if mv.status != 0 {
-                                            fail2!("mv failed with {} {}",
-                                                   str::from_utf8(mv.output),
-                                                   str::from_utf8(mv.error))
+                                            println!("mv: {}", str::from_utf8(mv.output));
+                                            fail2!("mv failed with {}", str::from_utf8(mv.error))
                                         }
 
                                         // delete the build dir.
@@ -241,6 +239,7 @@ fn main() {
                                                                      [~"-rf",
                                                                       p.to_str()]);
                                         if rm.status != 0 {
+                                            println!("rm: {}", str::from_utf8(rm.output));
                                             fail2!("rm failed on {} with {}", p.to_str(),
                                                    std::str::from_utf8(rm.error));
                                         }
