@@ -9,9 +9,8 @@ use std::rt::io::timer;
 use extra::arc::Arc;
 use extra::json;
 use extra::serialize::Decodable;
-use extra::getopts;
 use extra::getopts::groups;
-use extra::glob::{GlobIterator, glob};
+use extra::glob::{glob};
 
 use git::{Repo, Sha};
 use commit_walker::CommitWalker;
