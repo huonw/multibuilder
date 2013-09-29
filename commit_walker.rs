@@ -45,6 +45,8 @@ impl<'self> CommitWalker<'self> {
         } = *self;
 
         repo.pull("mozilla", "master"); // TODO: make configurable
+        // TODO: only rewind if we need to
+        *next_candidate = Some(repo.rev_parse("HEAD").expect("Missing HEAD"));
 
         match next_candidate.take() {
             None => None,
