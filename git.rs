@@ -6,6 +6,12 @@ pub struct Repo {
     path: Path
 }
 
+#[deriving(Clone, Encodable, Decodable)]
+pub struct RemoteBranch {
+    name: ~str,
+    branch: ~str
+}
+
 /// Represents a SHA hash used by git.
 #[deriving(Clone, Eq, IterBytes)]
 pub struct Sha {
@@ -83,9 +89,11 @@ impl Repo {
     }
 
     /// Pull from a remote
-    pub fn pull(&self, remote: &str, branch: &str) -> bool {
+    pub fn pull(&self, remote_branch: &RemoteBranch) -> bool {
         let run::ProcessOutput { status, output, error } =
-            self.exec("git", [~"pull", remote.to_owned(), branch.to_owned()]);
+            self.exec("git", [~"pull",
+                              remote_branch.name.to_owned(),
+                              remote_branch.branch.to_owned()]);
         if status != 0 {
             warn2!("Repo.pull failed with {}: {} {}",
                    status,

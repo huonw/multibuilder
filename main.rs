@@ -35,7 +35,8 @@ struct Config {
     /// the repository to bench.
     main_repo: ~str,
     /// the commands to run when building.
-    build_commands: ~[Command]
+    build_commands: ~[Command],
+    pull_from: Option<git::RemoteBranch>
 }
 
 #[deriving(Encodable, Decodable)]
@@ -149,7 +150,10 @@ fn main() {
 
     let build_commands = Arc::new(config.build_commands.clone());
 
-    let mut walker = CommitWalker::new(main_repo.get(), already_built, already_built_file);
+    let mut walker = CommitWalker::new(main_repo.get(),
+                                       already_built,
+                                       already_built_file,
+                                       config.pull_from.map(|ref_| ref_));
 
     // start the workers a-working. This vec contains a worker iff
     // it's currently working (or just finished a job); they get
@@ -209,7 +213,7 @@ fn main() {
                                 // create the final output directory.
                                 let mkdir = run::process_output("mkdir",
                                                                 [~"-p", suboutput_dir.to_str()]);
-                                if mkdir.status != 0 { // meh, it's late.
+                                if mkdir.status != 0 {
                                         fail2!("mkdir failed on {} with {}", suboutput_dir.to_str(),
                                                std::str::from_utf8(mkdir.error));
                                 }

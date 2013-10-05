@@ -1,4 +1,4 @@
-use git::{Repo, Sha};
+use git::{Repo, Sha, RemoteBranch};
 use std::rt::io::Writer;
 use std::rt::io::file::FileStream;
 use std::hashmap::HashSet;
@@ -9,17 +9,21 @@ pub struct CommitWalker<'self> {
     in_progress: HashSet<Sha>,
     already_built: HashSet<Sha>,
     already_built_file: FileStream,
+    pull_remote: Option<&'self RemoteBranch>,
 }
 
 impl<'self> CommitWalker<'self> {
     pub fn new<'a>(repo: &'a Repo,
-               already_built: HashSet<Sha>, already_built_file: FileStream) -> CommitWalker<'a> {
+                   already_built: HashSet<Sha>, already_built_file: FileStream,
+                   remote: Option<&'a RemoteBranch>)
+        -> CommitWalker<'a> {
         CommitWalker {
             repo: repo,
             next_candidate: Some(repo.rev_parse("HEAD").expect("Missing HEAD")),
             in_progress: HashSet::new(),
             already_built: already_built,
-            already_built_file: already_built_file
+            already_built_file: already_built_file,
+            pull_remote: remote,
         }
     }
 
@@ -44,9 +48,18 @@ impl<'self> CommitWalker<'self> {
             _
         } = *self;
 
-        repo.pull("mozilla", "master"); // TODO: make configurable
-        // TODO: only rewind if we need to
-        *next_candidate = Some(repo.rev_parse("HEAD").expect("Missing HEAD"));
+
+        match self.pull_remote {
+            Some(r_b) => {
+                let old_head = repo.rev_parse("HEAD").expect("Missing current HEAD");
+                repo.pull(r_b);
+                let new_head = repo.rev_parse("HEAD").expect("Missing new HEAD");
+                if new_head != old_head {
+                    *next_candidate = Some(new_head);
+                }
+            }
+            None => {}
+        }
 
         match next_candidate.take() {
             None => None,

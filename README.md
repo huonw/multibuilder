@@ -16,7 +16,11 @@ Example configuration:
         "build_commands": [
             {"name": "./configure", "args": []},
             {"name": "make", "args": []}
-        ]
+        ],
+        "pull_from": {
+            "name": "foo",
+            "branch": "master"
+        }
     }
 
 This will run (at most) 10 builder tasks that checkout `./test` into
@@ -28,18 +32,22 @@ to `./output_dir/<hash>/<filename>` and the `./build/<hash>` directory
 deleted (the elements of `to_move` can be directories or files). If
 `output` is `null`, nothing is moved or deleted.
 
-Hashes that have already been built are stored in `already_built.txt`;
+The `pull_from` field gives the name and branch of a remote from which
+to pull between each benchmark, to check for updates. Benching starts
+from the new commits, if there are any. `pull_from` can be `null` to
+disable auto-pulling.
+
+Hashes that have already been built are stored in `already-built.txt`;
 this file is updated progressively, and so it is safe to just kill the
 builder mid-operation. It must exist.
 
-The location of `config.json` and `already_built.txt` can be
+The location of `config.json` and `already-built.txt` can be
 controlled with `-c` and `-a` respectively.
 
 ## TODO
 
 - git2-rs
 - grease-bench to benchmark automatically
-- handle pulling to get new commits
 - manual rebuild/bench of specific commits.
 - support distributed builds
 - support running a command after a certain number of builds and
