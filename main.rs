@@ -36,7 +36,10 @@ struct Config {
     main_repo: ~str,
     /// the commands to run when building.
     build_commands: ~[Command],
-    pull_from: Option<git::RemoteBranch>
+    /// the branch to pull from when updating the repo
+    pull_from: Option<git::RemoteBranch>,
+    /// a unix timestamp. if a commit is older than this, it won't be built.
+    earliest_build: Option<int>,
 }
 
 #[deriving(Encodable, Decodable)]
@@ -153,7 +156,7 @@ fn main() {
     let mut walker = CommitWalker::new(main_repo.get(),
                                        already_built,
                                        already_built_file,
-                                       config.pull_from.map(|ref_| ref_));
+                                       config.pull_from.map(|ref_| ref_), config.earliest_build);
 
     // start the workers a-working. This vec contains a worker iff
     // it's currently working (or just finished a job); they get
