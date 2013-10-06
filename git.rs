@@ -29,7 +29,7 @@ impl Repo {
     pub fn new_subrepo(&self, dir: Path) -> Repo {
         if os::path_exists(&dir) {
             assert!(os::path_is_dir(&dir),
-                    "creating a subrepo at a nondirectory %s", dir.to_str());
+                    "creating a subrepo at a nondirectory {:s}", dir.to_str());
 
             info2!("{} already exists, reusing", dir.to_str());
         } else {
