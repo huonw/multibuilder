@@ -12,13 +12,13 @@ pub struct CommitWalker<'self> {
     already_built: HashSet<Sha>,
     already_built_file: FileStream,
     pull_remote: Option<&'self RemoteBranch>,
-    earliest_build: int,
+    earliest_build: i64,
 }
 
 impl<'self> CommitWalker<'self> {
     pub fn new<'a>(repo: &'a Repo,
                    already_built: HashSet<Sha>, already_built_file: FileStream,
-                   remote: Option<&'a RemoteBranch>, earliest_build: Option<int>)
+                   remote: Option<&'a RemoteBranch>, earliest_build: Option<i64>)
         -> CommitWalker<'a> {
         CommitWalker {
             repo: repo,
@@ -72,7 +72,7 @@ impl<'self> CommitWalker<'self> {
 
                 let time = str::from_utf8(repo.exec("git", &[~"log", hash.value.clone(), ~"-1",
                                                              ~"--format=%ct"]).output);
-                let time: int = from_str(time.trim()).expect("Git returned invalid timestamp!?");
+                let time: i64 = from_str(time.trim()).expect("Git returned invalid timestamp!?");
 
                 if self.earliest_build > time {
                     info2!("Next candidate has a timestamp of {}, which is less than {}. Skipping",
