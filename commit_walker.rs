@@ -1,4 +1,6 @@
 use git::{Repo, Sha, RemoteBranch};
+use std;
+use std::str;
 use std::rt::io::Writer;
 use std::rt::io::file::FileStream;
 use std::hashmap::HashSet;
@@ -10,12 +12,13 @@ pub struct CommitWalker<'self> {
     already_built: HashSet<Sha>,
     already_built_file: FileStream,
     pull_remote: Option<&'self RemoteBranch>,
+    earliest_build: int,
 }
 
 impl<'self> CommitWalker<'self> {
     pub fn new<'a>(repo: &'a Repo,
                    already_built: HashSet<Sha>, already_built_file: FileStream,
-                   remote: Option<&'a RemoteBranch>)
+                   remote: Option<&'a RemoteBranch>, earliest_build: Option<int>)
         -> CommitWalker<'a> {
         CommitWalker {
             repo: repo,
@@ -24,6 +27,7 @@ impl<'self> CommitWalker<'self> {
             already_built: already_built,
             already_built_file: already_built_file,
             pull_remote: remote,
+            earliest_build: earliest_build.unwrap_or(std::num::Bounded::min_value()),
         }
     }
 
@@ -65,6 +69,16 @@ impl<'self> CommitWalker<'self> {
             None => None,
             Some(hash) => {
                 let mut hash = hash;
+
+                let time = str::from_utf8(repo.exec("git", &[~"log", hash.value.clone(), ~"-1",
+                                                             ~"--format=%ct"]).output);
+                let time: int = from_str(time.trim()).expect("Git returned invalid timestamp!?");
+
+                if self.earliest_build > time {
+                    info2!("Next candidate has a timestamp of {}, which is less than {}. Skipping",
+                           time, self.earliest_build);
+                    return None;
+                }
 
                 loop {
                     let parent = repo.parent_commit(&hash);
