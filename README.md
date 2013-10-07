@@ -20,7 +20,8 @@ Example configuration:
         "pull_from": {
             "name": "foo",
             "branch": "master"
-        }
+        },
+        earliest_build: null
     }
 
 This will run (at most) 10 builder tasks that checkout `./test` into
@@ -35,7 +36,9 @@ deleted (the elements of `to_move` can be directories or files). If
 The `pull_from` field gives the name and branch of a remote from which
 to pull between each benchmark, to check for updates. Benching starts
 from the new commits, if there are any. `pull_from` can be `null` to
-disable auto-pulling.
+disable auto-pulling. `earliest_build` (optionally) gives a timestamp
+which represents the oldest age of commits to build; the builder will
+not build any commits older than this.
 
 Hashes that have already been built are stored in `already-built.txt`;
 this file is updated progressively, and so it is safe to just kill the
@@ -55,3 +58,4 @@ controlled with `-c` and `-a` respectively.
   (e.g. it calls `bench-script 56da5f65..1314 12313..545 a0f9..123`
   with all the hashes it built in the most recent run). This would
   have to wait for all builds to finish before calling this script.
+- spin up more threads after threads get killed and HEAD moves.
