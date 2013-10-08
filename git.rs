@@ -116,7 +116,7 @@ impl Repo {
     }
 
     /// Get a UNIX timestamp of the commit date. `None` on failure.
-    pub fn ctime(&self, hash: &Sha) -> Option<int> {
+    pub fn ctime(&self, hash: &Sha) -> Option<i64> {
         let time = str::from_utf8(self.exec("git", &[~"log", hash.value.clone(),
                                                      ~"-1", ~"--format=%ct"]).output);
         from_str(time.trim())
