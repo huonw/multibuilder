@@ -40,6 +40,7 @@ struct Config {
     pull_from: Option<git::RemoteBranch>,
     /// a unix timestamp. if a commit is older than this, it won't be built.
     earliest_build: Option<i64>,
+    when_finished: ~[Command],
 }
 
 #[deriving(Encodable, Decodable)]
@@ -179,7 +180,18 @@ fn main() {
     }
     'outer: loop {
         if workers.is_empty() {
-            break // all done.
+            info2!("No more builds, running when_finished");
+            for cmd in config.when_finished.iter() {
+                use std::run::{ProcessOutput, ProcessOptions};
+                debug2!("Running {:?}", cmd);
+                let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new());
+                let result = result.finish_with_output();
+
+                if result.status != 0 {
+                    error2!("{} failed", cmd.name);
+                }
+            }
+            return;
         }
 
         // we need to remove items mid-iteration.

@@ -21,7 +21,10 @@ Example configuration:
             "name": "foo",
             "branch": "master"
         },
-        earliest_build: null
+        "earliest_build": null,
+        "when_finished": [
+            {"name": "echo", "args": ["Finished!"]}
+        ],
     }
 
 This will run (at most) 10 builder tasks that checkout `./test` into
@@ -38,7 +41,14 @@ to pull between each benchmark, to check for updates. Benching starts
 from the new commits, if there are any. `pull_from` can be `null` to
 disable auto-pulling. `earliest_build` (optionally) gives a timestamp
 which represents the oldest age of commits to build; the builder will
-not build any commits older than this.
+not build any commits older than this (using the commit time, not the author
+time).
+
+When there are no more commits to build, the commands given in `when_finished`
+will be run in the same manner as the `build_commands`, although in the
+working directory, not a checked out repository. In the future, multibuilder
+will poll the repository for changes and wake up when there are more to build,
+making this option more useful.
 
 Hashes that have already been built are stored in `already-built.txt`;
 this file is updated progressively, and so it is safe to just kill the
