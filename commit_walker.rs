@@ -1,6 +1,5 @@
 use git::{Repo, Sha, RemoteBranch};
 use std;
-use std::str;
 use std::rt::io::Writer;
 use std::rt::io::file::FileStream;
 use std::hashmap::HashSet;
@@ -70,18 +69,20 @@ impl<'self> CommitWalker<'self> {
             Some(hash) => {
                 let mut hash = hash;
 
-                let time = str::from_utf8(repo.exec("git", &[~"log", hash.value.clone(), ~"-1",
-                                                             ~"--format=%ct"]).output);
-                let time: int = from_str(time.trim()).expect("Git returned invalid timestamp!?");
-
-                if self.earliest_build > time {
-                    info2!("Next candidate has a timestamp of {}, which is less than {}. Skipping",
-                           time, self.earliest_build);
+                if self.earliest_build > repo.ctime(&hash).unwrap() {
+                    info2!("Next candidate is too old, not building");
+                    *next_candidate = None;
                     return None;
                 }
 
                 loop {
                     let parent = repo.parent_commit(&hash);
+                    if self.earliest_build > repo.ctime(&hash).unwrap() {
+                        info2!("Parent too old, not building");
+                        *next_candidate = None;
+                        return None;
+                    }
+
                     // not built, and not in progress.
                     if !already_built.contains(&hash) && !in_progress.contains(&hash) {
                         *next_candidate = parent;

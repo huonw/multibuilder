@@ -164,7 +164,7 @@ fn main() {
     let mut workers = ~[];
     for i in range(0, num_workers) {
         match walker.find_unbuilt_commit() {
-            None => break,
+            None => { info2!("No more commits to build"); break },
             Some(hash) => {
                 let worker = task_worker::TaskWorker::new(build_dir.clone(),
                                                           main_repo.clone(),
