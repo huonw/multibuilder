@@ -114,4 +114,11 @@ impl Repo {
         let mut proc = run::Process::new(name, args, opts);
         proc.finish_with_output()
     }
+
+    /// Get a UNIX timestamp of the commit date. `None` on failure.
+    pub fn ctime(&self, hash: &Sha) -> Option<int> {
+        let time = str::from_utf8(self.exec("git", &[~"log", hash.value.clone(),
+                                                     ~"-1", ~"--format=%ct"]).output);
+        from_str(time.trim())
+    }
 }
