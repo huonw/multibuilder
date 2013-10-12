@@ -157,7 +157,7 @@ fn main() {
     let mut walker = CommitWalker::new(main_repo.get(),
                                        already_built,
                                        already_built_file,
-                                       config.pull_from.map(|ref_| ref_),
+                                       config.pull_from.as_ref(),
                                        config.earliest_build);
 
     // start the workers a-working. This vec contains a worker iff
