@@ -1,5 +1,7 @@
 # Multibuilder
 
+[![Build Status](https://travis-ci.org/huonw/multibuilder.png)](https://travis-ci.org/huonw/multibuilder)
+
 Point it at a git repository and it will build all the direct
 ancestors of the current HEAD.
 
