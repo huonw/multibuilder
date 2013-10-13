@@ -182,7 +182,7 @@ fn main() {
         if workers.is_empty() {
             info2!("No more builds, running when_finished");
             for cmd in config.when_finished.iter() {
-                use std::run::{ProcessOutput, ProcessOptions};
+                use std::run::ProcessOptions;
                 debug2!("Running {:?}", cmd);
                 let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new());
                 let result = result.finish_with_output();
