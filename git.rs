@@ -29,21 +29,22 @@ impl Repo {
     pub fn new_subrepo(&self, dir: Path) -> Repo {
         if os::path_exists(&dir) {
             assert!(os::path_is_dir(&dir),
-                    "creating a subrepo at a nondirectory {:s}", dir.to_str());
+                    "creating a subrepo at a nondirectory {}", dir.display());
 
-            info2!("{} already exists, reusing", dir.to_str());
+            info2!("{} already exists, reusing", dir.display());
         } else {
             // there's away to checkout into an external dir?
             let run::ProcessOutput { status, output, error } =
                 run::process_output("git",
                                     [~"clone",
-                                     self.path.to_str(),
-                                     dir.to_str()]);
+                                     // XXX this shouldn't be using strings... :(
+                                     format!("{}", self.path.display()),
+                                     format!("{}", dir.display())]);
 
             if status != 0 {
                 fail2!("Couldn't copy {} to {}: `{}` `{}`",
-                       self.path.to_str(),
-                       dir.to_str(),
+                       self.path.display(),
+                       dir.display(),
                        str::from_utf8_slice(output),
                        str::from_utf8_slice(error))
             }

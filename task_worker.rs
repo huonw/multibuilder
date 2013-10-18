@@ -34,7 +34,7 @@ impl TaskWorker {
                         println!("Building {}", hash.value)
 
                         // foo/bar/0088119922aa33bb...77ff
-                        let hash_dir = build_dir.push(hash.value);
+                        let hash_dir = build_dir.join(hash.value.as_slice());
                         let subrepo = canonical_repo.get().new_subrepo(hash_dir);
                         subrepo.checkout(hash.value);
 

@@ -10,7 +10,7 @@ use extra::arc::Arc;
 use extra::json;
 use extra::serialize::Decodable;
 use extra::getopts::groups;
-use extra::glob::{glob};
+use extra::glob;
 
 use git::{Repo, Sha};
 use commit_walker::CommitWalker;
@@ -65,7 +65,7 @@ impl Config {
         match io::file_reader(p) {
             Err(s) => fail!(s),
             Ok(reader) => {
-                let msg = format!("{} is invalid json", p.to_str());
+                let msg = format!("{} is invalid json", p.display());
                 let json = json::from_reader(reader).expect(msg);
                 Decodable::decode(&mut json::Decoder(json))
             }
@@ -91,18 +91,18 @@ fn main() {
             }
 
             let cfg = if matches.opt_present("c") {
-                Path(matches.opt_str("c").unwrap())
+                Path::new(matches.opt_str("c").unwrap())
             } else if matches.opt_present("config") {
-                Path(matches.opt_str("config").unwrap())
+                Path::new(matches.opt_str("config").unwrap())
             } else {
-                Path("config.json")
+                Path::new("config.json")
             };
             let built = if matches.opt_present("a") {
-                Path(matches.opt_str("a").unwrap())
+                Path::new(matches.opt_str("a").unwrap())
             } else if matches.opt_present("already-built") {
-                Path(matches.opt_str("already-built").unwrap())
+                Path::new(matches.opt_str("already-built").unwrap())
             } else {
-                Path("already-built.txt")
+                Path::new("already-built.txt")
             };
 
             (cfg, built)
@@ -117,7 +117,7 @@ fn main() {
     let already_built_file = file::open(&already_built_path, Append, ReadWrite);
 
     let mut already_built_file =
-        already_built_file.expect(format!("Error opening {}", already_built_path.to_str()));
+        already_built_file.expect(format!("Error opening {}", already_built_path.display()));
 
     let text = str::from_utf8_owned(already_built_file.read_to_end());
 
@@ -130,14 +130,14 @@ fn main() {
     let num_workers = config.num_local_builders.unwrap_or_zero();
     println!("Running with max {} workers", num_workers);
 
-    let build_dir = Path(config.build_parent_dir);
+    let build_dir = Path::new(config.build_parent_dir.as_slice());
     if !os::path_is_dir(&build_dir) {
-        fail2!("`{}` is not a directory", build_dir.to_str())
+        fail2!("`{}` is not a directory", build_dir.display())
     }
 
-    let main_repo_dir = Path(config.main_repo);
+    let main_repo_dir = Path::new(config.main_repo.as_slice());
     if !os::path_is_dir(&main_repo_dir) {
-        fail2!("`{}` is not a directory", main_repo_dir.to_str())
+        fail2!("`{}` is not a directory", main_repo_dir.display())
     }
     let main_repo = Arc::new(Repo::new(main_repo_dir));
 
@@ -145,9 +145,9 @@ fn main() {
     match config.output {
         None => {}
         Some(ref output) => {
-            let output_dir = Path(output.parent_dir);
+            let output_dir = Path::new(output.parent_dir.as_slice());
             if !os::path_is_dir(&output_dir) {
-                fail2!("`{}` is not a directory", output_dir.to_str())
+                fail2!("`{}` is not a directory", output_dir.display())
             }
         }
     }
@@ -224,13 +224,17 @@ fn main() {
                         match config.output {
                             None => {}
                             Some(ref output) => {
-                                let suboutput_dir = Path(output.parent_dir).push(hash.value);
+                                let suboutput_dir = Path::new(output.parent_dir.as_slice())
+                                    .join(hash.value.as_slice());
 
                                 // create the final output directory.
                                 let mkdir = run::process_output("mkdir",
-                                                                [~"-p", suboutput_dir.to_str()]);
+                                                                [~"-p",
+                                                                 format!("{}",
+                                                                         suboutput_dir.display())]);
                                 if mkdir.status != 0 {
-                                        fail2!("mkdir failed on {} with {}", suboutput_dir.to_str(),
+                                        fail2!("mkdir failed on {} with {}",
+                                               suboutput_dir.display(),
                                                std::str::from_utf8(mkdir.error));
                                 }
 
@@ -240,11 +244,17 @@ fn main() {
                                         // output (in `p`) to the appropriate
                                         // place.
                                         let mut move_args: ~[~str] = do output.to_move.map |s| {
-                                            let glob = glob(p.push(*s).to_str());
-                                            glob.map(|x| x.to_str()).to_owned_vec()
+                                            let glob_path = p.join(s.as_slice());
+                                            let glob_str = format!("{}", glob_path.display());
+                                            let glob = glob::glob(glob_str);
+
+                                            // XXX shouldn't be using strings here :(
+                                            glob.map(|x| format!("{}", x.display()))
+                                                .to_owned_vec()
                                         }.concat_vec();
                                         move_args.push(~"-vt");
-                                        move_args.push(suboutput_dir.to_str());
+                                        // XXX strings
+                                        move_args.push(format!("{}", suboutput_dir.display()));
 
                                         // move what we want.
                                         let mv = run::process_output("mv", move_args);
@@ -256,10 +266,11 @@ fn main() {
                                         // delete the build dir.
                                         let rm = run::process_output("rm",
                                                                      [~"-rf",
-                                                                      p.to_str()]);
+                                                                      // XXX strings
+                                                                      format!("{}", p.display())]);
                                         if rm.status != 0 {
                                             println!("rm: {}", str::from_utf8(rm.output));
-                                            fail2!("rm failed on {} with {}", p.to_str(),
+                                            fail2!("rm failed on {} with {}", p.display(),
                                                    std::str::from_utf8(rm.error));
                                         }
                                     }
