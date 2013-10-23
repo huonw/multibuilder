@@ -70,7 +70,7 @@ impl<'self> CommitWalker<'self> {
                 let mut hash = hash;
 
                 if self.earliest_build > repo.ctime(&hash).unwrap() {
-                    info2!("Next candidate is too old, not building");
+                    info!("Next candidate is too old, not building");
                     *next_candidate = None;
                     return None;
                 }
@@ -78,7 +78,7 @@ impl<'self> CommitWalker<'self> {
                 loop {
                     let parent = repo.parent_commit(&hash);
                     if self.earliest_build > repo.ctime(&hash).unwrap() {
-                        info2!("Parent too old, not building");
+                        info!("Parent too old, not building");
                         *next_candidate = None;
                         return None;
                     }

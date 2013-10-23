@@ -132,12 +132,12 @@ fn main() {
 
     let build_dir = Path::new(config.build_parent_dir.as_slice());
     if !os::path_is_dir(&build_dir) {
-        fail2!("`{}` is not a directory", build_dir.display())
+        fail!("`{}` is not a directory", build_dir.display())
     }
 
     let main_repo_dir = Path::new(config.main_repo.as_slice());
     if !os::path_is_dir(&main_repo_dir) {
-        fail2!("`{}` is not a directory", main_repo_dir.display())
+        fail!("`{}` is not a directory", main_repo_dir.display())
     }
     let main_repo = Arc::new(Repo::new(main_repo_dir));
 
@@ -147,7 +147,7 @@ fn main() {
         Some(ref output) => {
             let output_dir = Path::new(output.parent_dir.as_slice());
             if !os::path_is_dir(&output_dir) {
-                fail2!("`{}` is not a directory", output_dir.display())
+                fail!("`{}` is not a directory", output_dir.display())
             }
         }
     }
@@ -166,13 +166,13 @@ fn main() {
     let mut workers = ~[];
     for i in range(0, num_workers) {
         match walker.find_unbuilt_commit() {
-            None => { info2!("No more commits to build"); break },
+            None => { info!("No more commits to build"); break },
             Some(hash) => {
                 let worker = task_worker::TaskWorker::new(build_dir.clone(),
                                                           main_repo.clone(),
                                                           build_commands.clone());
 
-                info2!("Sending {} to worker {}", hash.value, i);
+                info!("Sending {} to worker {}", hash.value, i);
                 worker.stream.send(build::BuildHash(hash));
                 workers.push(worker);
             }
@@ -180,15 +180,15 @@ fn main() {
     }
     'outer: loop {
         if workers.is_empty() {
-            info2!("No more builds, running when_finished");
+            info!("No more builds, running when_finished");
             for cmd in config.when_finished.iter() {
                 use std::run::ProcessOptions;
-                debug2!("Running {:?}", cmd);
+                debug!("Running {:?}", cmd);
                 let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new());
                 let result = result.finish_with_output();
 
                 if result.status != 0 {
-                    error2!("{} failed", cmd.name);
+                    error!("{} failed", cmd.name);
                 }
             }
             return;
@@ -233,7 +233,7 @@ fn main() {
                                                                  format!("{}",
                                                                          suboutput_dir.display())]);
                                 if mkdir.status != 0 {
-                                        fail2!("mkdir failed on {} with {}",
+                                        fail!("mkdir failed on {} with {}",
                                                suboutput_dir.display(),
                                                std::str::from_utf8(mkdir.error));
                                 }
@@ -260,7 +260,7 @@ fn main() {
                                         let mv = run::process_output("mv", move_args);
                                         if mv.status != 0 {
                                             println!("mv: {}", str::from_utf8(mv.output));
-                                            fail2!("mv failed with {}", str::from_utf8(mv.error))
+                                            fail!("mv failed with {}", str::from_utf8(mv.error))
                                         }
 
                                         // delete the build dir.
@@ -270,7 +270,7 @@ fn main() {
                                                                       format!("{}", p.display())]);
                                         if rm.status != 0 {
                                             println!("rm: {}", str::from_utf8(rm.output));
-                                            fail2!("rm failed on {} with {}", p.display(),
+                                            fail!("rm failed on {} with {}", p.display(),
                                                    std::str::from_utf8(rm.error));
                                         }
                                     }

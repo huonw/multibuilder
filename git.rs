@@ -31,7 +31,7 @@ impl Repo {
             assert!(os::path_is_dir(&dir),
                     "creating a subrepo at a nondirectory {}", dir.display());
 
-            info2!("{} already exists, reusing", dir.display());
+            info!("{} already exists, reusing", dir.display());
         } else {
             // there's away to checkout into an external dir?
             let run::ProcessOutput { status, output, error } =
@@ -42,7 +42,7 @@ impl Repo {
                                      format!("{}", dir.display())]);
 
             if status != 0 {
-                fail2!("Couldn't copy {} to {}: `{}` `{}`",
+                fail!("Couldn't copy {} to {}: `{}` `{}`",
                        self.path.display(),
                        dir.display(),
                        str::from_utf8_slice(output),
@@ -61,7 +61,7 @@ impl Repo {
             let s = str::from_utf8_owned(output);
             Some(Sha { value: s.trim().to_owned() })
         } else {
-            warn2!("Repo.rev_parse failed with {}: {} {}",
+            warn!("Repo.rev_parse failed with {}: {} {}",
                    status,
                    str::from_utf8(output),
                    str::from_utf8(error));
@@ -81,7 +81,7 @@ impl Repo {
         let run::ProcessOutput { status, output, error } =
             self.exec("git", [~"checkout", rev.to_owned()]);
         if status != 0 {
-            warn2!("Repo.checkout failed with {}: {} {}",
+            warn!("Repo.checkout failed with {}: {} {}",
                    status,
                    str::from_utf8(output),
                    str::from_utf8(error));
@@ -96,7 +96,7 @@ impl Repo {
                               remote_branch.name.to_owned(),
                               remote_branch.branch.to_owned()]);
         if status != 0 {
-            warn2!("Repo.pull failed with {}: {} {}",
+            warn!("Repo.pull failed with {}: {} {}",
                    status,
                    str::from_utf8(output),
                    str::from_utf8(error));
