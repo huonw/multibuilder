@@ -1,8 +1,11 @@
+#[feature(managed_boxes)]; // this can be removed once extra::term doesn't use @mut Writer
+
 extern mod extra;
-use std::{io, str, run, os};
+use std::{str, run, os};
 use std::hashmap::HashSet;
-use std::rt::io::{Writer, Append, ReadWrite};
+use std::rt::io::{Writer, Reader, Open, Append, ReadWrite};
 use std::rt::io::file;
+use std::rt::io::stdio::stdout;
 use std::rt::io::extensions::ReaderUtil;
 use std::rt::io::timer;
 
@@ -62,13 +65,14 @@ pub struct Command {
 impl Config {
     fn load(p: &Path) -> Config {
         // json needs old io :(
-        match io::file_reader(p) {
-            Err(s) => fail!(s),
-            Ok(reader) => {
+        match file::open(p, Open, ReadWrite) {
+            Some(reader) => {
+                let mut reader = reader;
                 let msg = format!("{} is invalid json", p.display());
-                let json = json::from_reader(reader).expect(msg);
+                let json = json::from_reader(&mut reader as &mut Reader).expect(msg);
                 Decodable::decode(&mut json::Decoder(json))
-            }
+            },
+            None => fail!("Could not open {}", p.display())
         }
     }
 }
@@ -197,7 +201,7 @@ fn main() {
         // we need to remove items mid-iteration.
         // FIXME using select + a timeout would be nicer here?
         let mut found_a_message = false;
-        let term = extra::term::Terminal::new(std::io::stdout()).unwrap();
+        let term = extra::term::Terminal::new(@mut stdout() as @mut Writer).unwrap();
         'scanner: for i in range(0, workers.len()) {
             if workers[i].stream.peek() {
                 found_a_message = true;
