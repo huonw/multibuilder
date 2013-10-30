@@ -66,7 +66,6 @@ impl Config {
                 let json = json::from_reader(reader as &mut Reader).expect(msg);
                 Decodable::decode(&mut json::Decoder(json))
             },
-            None => fail!("Could not open {}", p.display())
         }
     }
 }
