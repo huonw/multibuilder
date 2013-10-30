@@ -3,17 +3,12 @@
 extern mod extra;
 use std::{str, run, os};
 use std::hashmap::HashSet;
-use std::rt::io::{Writer, Reader, Open, Append, ReadWrite};
-use std::rt::io::file;
-use std::rt::io::stdio::stdout;
-use std::rt::io::extensions::ReaderUtil;
-use std::rt::io::timer;
+use std::rt::io::{Reader, Writer, Append, ReadWrite, Read, Open, stdout, file, timer};
 
 use extra::arc::Arc;
-use extra::json;
+use extra::{glob, json};
 use extra::serialize::Decodable;
 use extra::getopts::groups;
-use extra::glob;
 
 use git::{Repo, Sha};
 use commit_walker::CommitWalker;
@@ -64,12 +59,11 @@ pub struct Command {
 
 impl Config {
     fn load(p: &Path) -> Config {
-        // json needs old io :(
-        match file::open(p, Open, ReadWrite) {
-            Some(reader) => {
-                let mut reader = reader;
+        match file::open(p, Open, Read) {
+            None => fail!("couldn't open {}", p.display()),
+            Some(ref mut reader) => {
                 let msg = format!("{} is invalid json", p.display());
-                let json = json::from_reader(&mut reader as &mut Reader).expect(msg);
+                let json = json::from_reader(reader as &mut Reader).expect(msg);
                 Decodable::decode(&mut json::Decoder(json))
             },
             None => fail!("Could not open {}", p.display())
@@ -237,9 +231,9 @@ fn main() {
                                                                  format!("{}",
                                                                          suboutput_dir.display())]);
                                 if mkdir.status != 0 {
-                                        fail!("mkdir failed on {} with {}",
-                                               suboutput_dir.display(),
-                                               std::str::from_utf8(mkdir.error));
+                                    fail!("mkdir failed on {} with {}",
+                                          suboutput_dir.display(),
+                                          std::str::from_utf8(mkdir.error));
                                 }
 
                                 match loc {
@@ -275,7 +269,7 @@ fn main() {
                                         if rm.status != 0 {
                                             println!("rm: {}", str::from_utf8(rm.output));
                                             fail!("rm failed on {} with {}", p.display(),
-                                                   std::str::from_utf8(rm.error));
+                                                  std::str::from_utf8(rm.error));
                                         }
                                     }
                                 }

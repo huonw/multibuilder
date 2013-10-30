@@ -43,10 +43,10 @@ impl Repo {
 
             if status != 0 {
                 fail!("Couldn't copy {} to {}: `{}` `{}`",
-                       self.path.display(),
-                       dir.display(),
-                       str::from_utf8_slice(output),
-                       str::from_utf8_slice(error))
+                      self.path.display(),
+                      dir.display(),
+                      str::from_utf8_slice(output),
+                      str::from_utf8_slice(error))
             }
         }
         Repo::new(dir)
@@ -62,9 +62,9 @@ impl Repo {
             Some(Sha { value: s.trim().to_owned() })
         } else {
             warn!("Repo.rev_parse failed with {}: {} {}",
-                   status,
-                   str::from_utf8(output),
-                   str::from_utf8(error));
+                  status,
+                  str::from_utf8(output),
+                  str::from_utf8(error));
             None
         }
     }
@@ -112,8 +112,8 @@ impl Repo {
             .. run::ProcessOptions::new()
         };
 
-        let mut proc = run::Process::new(name, args, opts);
-        proc.finish_with_output()
+        let mut process = run::Process::new(name, args, opts);
+        process.finish_with_output()
     }
 
     /// Get a UNIX timestamp of the commit date. `None` on failure.
