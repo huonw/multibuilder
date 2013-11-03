@@ -124,7 +124,7 @@ fn main() {
 
     println!("Found {} already built commits", already_built.len());
 
-    let num_workers = config.num_local_builders.unwrap_or_zero();
+    let num_workers = config.num_local_builders.unwrap_or_default();
     println!("Running with max {} workers", num_workers);
 
     let build_dir = Path::new(config.build_parent_dir.as_slice());
