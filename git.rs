@@ -1,4 +1,4 @@
-use std::{run, str, os};
+use std::{run, str};
 
 /// Represents a git repository.
 #[deriving(Clone)]
@@ -27,9 +27,8 @@ impl Repo {
 
     /// "Clone" this repo into `dir`.
     pub fn new_subrepo(&self, dir: Path) -> Repo {
-        if os::path_exists(&dir) {
-            assert!(os::path_is_dir(&dir),
-                    "creating a subrepo at a nondirectory {}", dir.display());
+        if dir.exists() {
+            assert!(dir.is_dir(), "creating a subrepo at a nondirectory {}", dir.display());
 
             info!("{} already exists, reusing", dir.display());
         } else {

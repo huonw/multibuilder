@@ -1,9 +1,12 @@
 #[feature(managed_boxes)]; // this can be removed once extra::term doesn't use @mut Writer
+#[feature(macro_rules)];
+
+#[deny(warnings)];
 
 extern mod extra;
-use std::{str, run, os};
+use std::{str, run};
 use std::hashmap::HashSet;
-use std::rt::io::{Reader, Writer, Append, ReadWrite, Read, Open, stdout, file, timer};
+use std::rt::io::{Reader, Writer, Append, ReadWrite, stdout, File, timer};
 
 use extra::arc::Arc;
 use extra::{glob, json};
@@ -17,6 +20,11 @@ pub mod commit_walker;
 pub mod git;
 pub mod build;
 pub mod task_worker;
+
+fn is_dir(p: Path) -> Path {
+    assert!(p.is_dir(), "`{}` is not a directory", p.display());
+    p
+}
 
 #[deriving(Encodable, Decodable)]
 struct Config {
@@ -59,7 +67,7 @@ pub struct Command {
 
 impl Config {
     fn load(p: &Path) -> Config {
-        match file::open(p, Open, Read) {
+        match File::open(p) {
             None => fail!("couldn't open {}", p.display()),
             Some(ref mut reader) => {
                 let msg = format!("{} is invalid json", p.display());
@@ -111,7 +119,7 @@ fn main() {
     let mut already_built = HashSet::new();
 
     // FIXME: allow this to be created automagically.
-    let already_built_file = file::open(&already_built_path, Append, ReadWrite);
+    let already_built_file = File::open_mode(&already_built_path, Append, ReadWrite);
 
     let mut already_built_file =
         already_built_file.expect(format!("Error opening {}", already_built_path.display()));
@@ -127,25 +135,17 @@ fn main() {
     let num_workers = config.num_local_builders.unwrap_or_default();
     println!("Running with max {} workers", num_workers);
 
-    let build_dir = Path::new(config.build_parent_dir.as_slice());
-    if !os::path_is_dir(&build_dir) {
-        fail!("`{}` is not a directory", build_dir.display())
-    }
+    let build_dir = is_dir(Path::new(config.build_parent_dir.as_slice()));
 
-    let main_repo_dir = Path::new(config.main_repo.as_slice());
-    if !os::path_is_dir(&main_repo_dir) {
-        fail!("`{}` is not a directory", main_repo_dir.display())
-    }
+    let main_repo_dir = is_dir(Path::new(config.main_repo.as_slice()));
+
     let main_repo = Arc::new(Repo::new(main_repo_dir));
 
     // check the dir exists
     match config.output {
         None => {}
         Some(ref output) => {
-            let output_dir = Path::new(output.parent_dir.as_slice());
-            if !os::path_is_dir(&output_dir) {
-                fail!("`{}` is not a directory", output_dir.display())
-            }
+            is_dir(Path::new(output.parent_dir.as_slice()));
         }
     }
 

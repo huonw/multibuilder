@@ -1,7 +1,7 @@
 use git::{Repo, Sha, RemoteBranch};
 use std;
 use std::rt::io::Writer;
-use std::rt::io::file::FileStream;
+use std::rt::io::fs::File;
 use std::hashmap::HashSet;
 
 pub struct CommitWalker<'self> {
@@ -9,14 +9,14 @@ pub struct CommitWalker<'self> {
     next_candidate: Option<Sha>,
     in_progress: HashSet<Sha>,
     already_built: HashSet<Sha>,
-    already_built_file: FileStream,
+    already_built_file: File,
     pull_remote: Option<&'self RemoteBranch>,
     earliest_build: i64,
 }
 
 impl<'self> CommitWalker<'self> {
     pub fn new<'a>(repo: &'a Repo,
-                   already_built: HashSet<Sha>, already_built_file: FileStream,
+                   already_built: HashSet<Sha>, already_built_file: File,
                    remote: Option<&'a RemoteBranch>, earliest_build: Option<i64>)
         -> CommitWalker<'a> {
         CommitWalker {
