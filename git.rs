@@ -40,7 +40,7 @@ impl Repo {
                                      format!("{}", self.path.display()),
                                      format!("{}", dir.display())]);
 
-            if status != 0 {
+            if !status.success() {
                 fail!("Couldn't copy {} to {}: `{}` `{}`",
                       self.path.display(),
                       dir.display(),
@@ -56,7 +56,7 @@ impl Repo {
         let run::ProcessOutput { status, output, error } =
             self.exec("git", [~"rev-parse", rev.to_owned()]);
 
-        if status == 0 {
+        if status.success() {
             let s = str::from_utf8_owned(output);
             Some(Sha { value: s.trim().to_owned() })
         } else {
@@ -79,13 +79,13 @@ impl Repo {
     pub fn checkout(&self, rev: &str) -> bool {
         let run::ProcessOutput { status, output, error } =
             self.exec("git", [~"checkout", rev.to_owned()]);
-        if status != 0 {
+        if !status.success() {
             warn!("Repo.checkout failed with {}: {} {}",
                    status,
                    str::from_utf8(output),
                    str::from_utf8(error));
         }
-        status == 0
+        status.success()
     }
 
     /// Pull from a remote
@@ -94,13 +94,13 @@ impl Repo {
             self.exec("git", [~"pull",
                               remote_branch.name.to_owned(),
                               remote_branch.branch.to_owned()]);
-        if status != 0 {
+        if !status.success() {
             warn!("Repo.pull failed with {}: {} {}",
                    status,
                    str::from_utf8(output),
                    str::from_utf8(error));
         }
-        status == 0
+        status.success()
     }
 
     /// Run the given command with the given args in the root of this

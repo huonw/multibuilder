@@ -184,7 +184,7 @@ fn main() {
                 let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new());
                 let result = result.finish_with_output();
 
-                if result.status != 0 {
+                if !result.status.success() {
                     error!("{} failed", cmd.name);
                 }
             }
@@ -229,7 +229,7 @@ fn main() {
                                                                 [~"-p",
                                                                  format!("{}",
                                                                          suboutput_dir.display())]);
-                                if mkdir.status != 0 {
+                                if !mkdir.status.success() {
                                     fail!("mkdir failed on {} with {}",
                                           suboutput_dir.display(),
                                           std::str::from_utf8(mkdir.error));
@@ -255,7 +255,7 @@ fn main() {
 
                                         // move what we want.
                                         let mv = run::process_output("mv", move_args);
-                                        if mv.status != 0 {
+                                        if !mv.status.success() {
                                             println!("mv: {}", str::from_utf8(mv.output));
                                             fail!("mv failed with {}", str::from_utf8(mv.error))
                                         }
@@ -265,7 +265,7 @@ fn main() {
                                                                      [~"-rf",
                                                                       // XXX strings
                                                                       format!("{}", p.display())]);
-                                        if rm.status != 0 {
+                                        if !rm.status.success() {
                                             println!("rm: {}", str::from_utf8(rm.output));
                                             fail!("rm failed on {} with {}", p.display(),
                                                   std::str::from_utf8(rm.error));
