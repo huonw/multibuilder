@@ -6,7 +6,7 @@
 extern mod extra;
 use std::{str, run};
 use std::hashmap::HashSet;
-use std::rt::io::{Reader, Writer, Append, ReadWrite, stdout, File, timer};
+use std::io::{Append, ReadWrite, stdout, File, timer};
 
 use extra::arc::Arc;
 use extra::{glob, json};

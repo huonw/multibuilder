@@ -1,7 +1,6 @@
 use git::{Repo, Sha, RemoteBranch};
 use std;
-use std::rt::io::Writer;
-use std::rt::io::fs::File;
+use std::io::fs::File;
 use std::hashmap::HashSet;
 
 pub struct CommitWalker<'self> {
