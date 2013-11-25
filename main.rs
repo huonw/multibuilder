@@ -1,4 +1,3 @@
-#[feature(managed_boxes)]; // this can be removed once extra::term doesn't use @mut Writer
 #[feature(macro_rules)];
 
 #[deny(warnings)];
@@ -194,7 +193,7 @@ fn main() {
         // we need to remove items mid-iteration.
         // FIXME using select + a timeout would be nicer here?
         let mut found_a_message = false;
-        let term = extra::term::Terminal::new(@mut stdout() as @mut Writer).unwrap();
+        let mut term = extra::term::Terminal::new(stdout()).unwrap();
         'scanner: for i in range(0, workers.len()) {
             if workers[i].stream.peek() {
                 found_a_message = true;
