@@ -59,6 +59,7 @@ fn run_build(repo: &Repo, commands: &[Command]) -> bool {
     for command in commands.iter() {
         let run::ProcessOutput { status, output, error } =
             repo.exec(command.name, command.args);
+        debug!("status success: {}", status.success());
         if !status.success() {
             warn!("run_build {} {:?} failed with {}: {} {}",
                    command.name,
