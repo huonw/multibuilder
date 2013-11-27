@@ -125,8 +125,8 @@ fn main() {
 
     let text = str::from_utf8_owned(already_built_file.read_to_end());
 
-    for hash in text.line_iter() {
-        already_built.insert(git::Sha { value: hash.split_iter(':').next().unwrap().to_owned() });
+    for hash in text.lines() {
+        already_built.insert(git::Sha { value: hash.split(':').next().unwrap().to_owned() });
     }
 
     println!("Found {} already built commits", already_built.len());
@@ -239,7 +239,7 @@ fn main() {
                                         // move some subdirectory of the final
                                         // output (in `p`) to the appropriate
                                         // place.
-                                        let mut move_args: ~[~str] = do output.to_move.map |s| {
+                                        let mut move_args: ~[~str] = output.to_move.map(|s| {
                                             let glob_path = p.join(s.as_slice());
                                             let glob_str = format!("{}", glob_path.display());
                                             let glob = glob::glob(glob_str);
@@ -247,7 +247,7 @@ fn main() {
                                             // XXX shouldn't be using strings here :(
                                             glob.map(|x| format!("{}", x.display()))
                                                 .to_owned_vec()
-                                        }.concat_vec();
+                                        }).concat_vec();
                                         move_args.push(~"-vt");
                                         // XXX strings
                                         move_args.push(format!("{}", suboutput_dir.display()));
