@@ -47,7 +47,7 @@ impl<'self> CommitWalker<'self> {
             next_candidate: ref mut next_candidate,
             in_progress: ref mut in_progress,
             already_built: ref already_built,
-            _
+            ..
         } = *self;
 
 
