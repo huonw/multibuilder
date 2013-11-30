@@ -95,18 +95,18 @@ fn main() {
             }
 
             let cfg = if matches.opt_present("c") {
-                Path::new(matches.opt_str("c").unwrap())
+                Path::init(matches.opt_str("c").unwrap())
             } else if matches.opt_present("config") {
-                Path::new(matches.opt_str("config").unwrap())
+                Path::init(matches.opt_str("config").unwrap())
             } else {
-                Path::new("config.json")
+                Path::init("config.json")
             };
             let built = if matches.opt_present("a") {
-                Path::new(matches.opt_str("a").unwrap())
+                Path::init(matches.opt_str("a").unwrap())
             } else if matches.opt_present("already-built") {
-                Path::new(matches.opt_str("already-built").unwrap())
+                Path::init(matches.opt_str("already-built").unwrap())
             } else {
-                Path::new("already-built.txt")
+                Path::init("already-built.txt")
             };
 
             (cfg, built)
@@ -134,9 +134,9 @@ fn main() {
     let num_workers = config.num_local_builders.unwrap_or_default();
     println!("Running with max {} workers", num_workers);
 
-    let build_dir = is_dir(Path::new(config.build_parent_dir.as_slice()));
+    let build_dir = is_dir(Path::init(config.build_parent_dir.as_slice()));
 
-    let main_repo_dir = is_dir(Path::new(config.main_repo.as_slice()));
+    let main_repo_dir = is_dir(Path::init(config.main_repo.as_slice()));
 
     let main_repo = Arc::new(Repo::new(main_repo_dir));
 
@@ -144,7 +144,7 @@ fn main() {
     match config.output {
         None => {}
         Some(ref output) => {
-            is_dir(Path::new(output.parent_dir.as_slice()));
+            is_dir(Path::init(output.parent_dir.as_slice()));
         }
     }
 
@@ -220,7 +220,7 @@ fn main() {
                         match config.output {
                             None => {}
                             Some(ref output) => {
-                                let suboutput_dir = Path::new(output.parent_dir.as_slice())
+                                let suboutput_dir = Path::init(output.parent_dir.as_slice())
                                     .join(hash.value.as_slice());
 
                                 // create the final output directory.
