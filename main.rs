@@ -71,7 +71,7 @@ impl Config {
             Some(ref mut reader) => {
                 let msg = format!("{} is invalid json", p.display());
                 let json = json::from_reader(reader as &mut Reader).expect(msg);
-                Decodable::decode(&mut json::Decoder(json))
+                Decodable::decode(&mut json::Decoder::init(json))
             },
         }
     }

@@ -44,8 +44,8 @@ impl Repo {
                 fail!("Couldn't copy {} to {}: `{}` `{}`",
                       self.path.display(),
                       dir.display(),
-                      str::from_utf8_slice(output),
-                      str::from_utf8_slice(error))
+                      str::from_utf8(output),
+                      str::from_utf8(error))
             }
         }
         Repo::new(dir)
@@ -117,8 +117,9 @@ impl Repo {
 
     /// Get a UNIX timestamp of the commit date. `None` on failure.
     pub fn ctime(&self, hash: &Sha) -> Option<i64> {
-        let time = str::from_utf8(self.exec("git", &[~"log", hash.value.clone(),
-                                                     ~"-1", ~"--format=%ct"]).output);
+        let time = self.exec("git", &[~"log", hash.value.clone(),
+                                      ~"-1", ~"--format=%ct"]).output;
+        let time = str::from_utf8(time);
         from_str(time.trim())
     }
 }
