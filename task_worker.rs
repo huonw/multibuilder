@@ -17,12 +17,12 @@ impl TaskWorker {
     pub fn new(build_dir: Path,
                canonical_repo: Arc<Repo>,
                build_commands: Arc<~[Command]>) -> TaskWorker {
-        let (outside, inside) = DuplexStream();
+        let (outside, inside) = DuplexStream::new();
         let ret = TaskWorker {
             stream: outside
         };
 
-        do task::spawn_sched(task::SingleThreaded) {
+        do task::spawn {
             loop {
                 let instr = match inside.try_recv() {
                     None => break, // finished

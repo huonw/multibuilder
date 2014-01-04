@@ -70,8 +70,8 @@ impl Config {
             None => fail!("couldn't open {}", p.display()),
             Some(ref mut reader) => {
                 let msg = format!("{} is invalid json", p.display());
-                let json = json::from_reader(reader as &mut Reader).expect(msg);
-                Decodable::decode(&mut json::Decoder::init(json))
+                let json = json::from_reader(reader as &mut Reader).ok().expect(msg);
+                Decodable::decode(&mut json::Decoder::new(json))
             },
         }
     }
@@ -95,18 +95,18 @@ fn main() {
             }
 
             let cfg = if matches.opt_present("c") {
-                Path::init(matches.opt_str("c").unwrap())
+                Path::new(matches.opt_str("c").unwrap())
             } else if matches.opt_present("config") {
-                Path::init(matches.opt_str("config").unwrap())
+                Path::new(matches.opt_str("config").unwrap())
             } else {
-                Path::init("config.json")
+                Path::new("config.json")
             };
             let built = if matches.opt_present("a") {
-                Path::init(matches.opt_str("a").unwrap())
+                Path::new(matches.opt_str("a").unwrap())
             } else if matches.opt_present("already-built") {
-                Path::init(matches.opt_str("already-built").unwrap())
+                Path::new(matches.opt_str("already-built").unwrap())
             } else {
-                Path::init("already-built.txt")
+                Path::new("already-built.txt")
             };
 
             (cfg, built)
@@ -134,9 +134,9 @@ fn main() {
     let num_workers = config.num_local_builders.unwrap_or_default();
     println!("Running with max {} workers", num_workers);
 
-    let build_dir = is_dir(Path::init(config.build_parent_dir.as_slice()));
+    let build_dir = is_dir(Path::new(config.build_parent_dir.as_slice()));
 
-    let main_repo_dir = is_dir(Path::init(config.main_repo.as_slice()));
+    let main_repo_dir = is_dir(Path::new(config.main_repo.as_slice()));
 
     let main_repo = Arc::new(Repo::new(main_repo_dir));
 
@@ -144,7 +144,7 @@ fn main() {
     match config.output {
         None => {}
         Some(ref output) => {
-            is_dir(Path::init(output.parent_dir.as_slice()));
+            is_dir(Path::new(output.parent_dir.as_slice()));
         }
     }
 
@@ -180,7 +180,7 @@ fn main() {
             for cmd in config.when_finished.iter() {
                 use std::run::ProcessOptions;
                 debug!("Running {:?}", cmd);
-                let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new());
+                let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new()).unwrap();
                 let result = result.finish_with_output();
 
                 if !result.status.success() {
@@ -220,14 +220,14 @@ fn main() {
                         match config.output {
                             None => {}
                             Some(ref output) => {
-                                let suboutput_dir = Path::init(output.parent_dir.as_slice())
+                                let suboutput_dir = Path::new(output.parent_dir.as_slice())
                                     .join(hash.value.as_slice());
 
                                 // create the final output directory.
                                 let mkdir = run::process_output("mkdir",
                                                                 [~"-p",
                                                                  format!("{}",
-                                                                         suboutput_dir.display())]);
+                                                                         suboutput_dir.display())]).unwrap();
                                 if !mkdir.status.success() {
                                     fail!("mkdir failed on {} with {}",
                                           suboutput_dir.display(),
@@ -253,7 +253,7 @@ fn main() {
                                         move_args.push(format!("{}", suboutput_dir.display()));
 
                                         // move what we want.
-                                        let mv = run::process_output("mv", move_args);
+                                        let mv = run::process_output("mv", move_args).unwrap();
                                         if !mv.status.success() {
                                             println!("mv: {}", str::from_utf8(mv.output));
                                             fail!("mv failed with {}", str::from_utf8(mv.error))
@@ -263,7 +263,7 @@ fn main() {
                                         let rm = run::process_output("rm",
                                                                      [~"-rf",
                                                                       // XXX strings
-                                                                      format!("{}", p.display())]);
+                                                                      format!("{}", p.display())]).unwrap();
                                         if !rm.status.success() {
                                             println!("rm: {}", str::from_utf8(rm.output));
                                             fail!("rm failed on {} with {}", p.display(),

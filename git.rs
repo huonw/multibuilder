@@ -38,7 +38,7 @@ impl Repo {
                                     [~"clone",
                                      // XXX this shouldn't be using strings... :(
                                      format!("{}", self.path.display()),
-                                     format!("{}", dir.display())]);
+                                     format!("{}", dir.display())]).unwrap();
 
             if !status.success() {
                 fail!("Couldn't copy {} to {}: `{}` `{}`",
@@ -111,7 +111,7 @@ impl Repo {
             .. run::ProcessOptions::new()
         };
 
-        let mut process = run::Process::new(name, args, opts);
+        let mut process = run::Process::new(name, args, opts).unwrap();
         process.finish_with_output()
     }
 

@@ -3,17 +3,17 @@ use std;
 use std::io::fs::File;
 use std::hashmap::HashSet;
 
-pub struct CommitWalker<'self> {
-    repo: &'self Repo,
+pub struct CommitWalker<'a> {
+    repo: &'a Repo,
     next_candidate: Option<Sha>,
     in_progress: HashSet<Sha>,
     already_built: HashSet<Sha>,
     already_built_file: File,
-    pull_remote: Option<&'self RemoteBranch>,
+    pull_remote: Option<&'a RemoteBranch>,
     earliest_build: i64,
 }
 
-impl<'self> CommitWalker<'self> {
+impl<'r> CommitWalker<'r> {
     pub fn new<'a>(repo: &'a Repo,
                    already_built: HashSet<Sha>, already_built_file: File,
                    remote: Option<&'a RemoteBranch>, earliest_build: Option<i64>)
