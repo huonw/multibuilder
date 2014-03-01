@@ -1,7 +1,7 @@
 use git::{Repo, Sha, RemoteBranch};
 use std;
 use std::io::fs::File;
-use std::hashmap::HashSet;
+use collections::HashSet;
 
 pub struct CommitWalker<'a> {
     repo: &'a Repo,
@@ -32,12 +32,12 @@ impl<'r> CommitWalker<'r> {
     pub fn register_built(&mut self, hash: Sha, success: bool) {
         self.in_progress.remove(&hash);
 
-        self.already_built_file.write(hash.value.as_bytes());
-        self.already_built_file.write(bytes!(":"));
-        self.already_built_file.write(match success {
-                                      true  => bytes!("success"),
-                                      false => bytes!("failure") });
-        self.already_built_file.write(bytes!("\n"));
+        let status = match success {
+            true => "success",
+            false => "failure",
+        };
+
+        (writeln!(&mut self.already_built_file, "{}:{}", hash.value, status)).unwrap();
 
         self.already_built.insert(hash);
     }

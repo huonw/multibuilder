@@ -1,6 +1,8 @@
-use std::{task, run, str};
-use extra::comm::DuplexStream;
-use extra::arc::Arc;
+use std::{task, str};
+use std::io::process::ProcessOutput;
+use std::comm::{Empty, Disconnected, Data};
+use sync::DuplexStream;
+use sync::Arc;
 
 use Command;
 use git::Repo;
@@ -22,11 +24,11 @@ impl TaskWorker {
             stream: outside
         };
 
-        do task::spawn {
+        task::spawn(proc() {
             loop {
                 let instr = match inside.try_recv() {
-                    None => break, // finished
-                    Some(instr) => instr
+                    Empty | Disconnected => break, // finished
+                    Data(instr) => instr
                 };
 
                 let result = match instr {
@@ -49,7 +51,7 @@ impl TaskWorker {
                 // finished this build.
                 inside.send(result)
             }
-        }
+        });
 
         ret
     }
@@ -57,7 +59,7 @@ impl TaskWorker {
 
 fn run_build(repo: &Repo, commands: &[Command]) -> bool {
     for command in commands.iter() {
-        let run::ProcessOutput { status, output, error } =
+        let ProcessOutput { status, output, error } =
             repo.exec(command.name, command.args);
         debug!("status success: {}", status.success());
         if !status.success() {

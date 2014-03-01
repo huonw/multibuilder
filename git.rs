@@ -1,4 +1,5 @@
-use std::{run, str};
+use std::str;
+use std::io::process::{ProcessOutput, Process, ProcessConfig};
 
 /// Represents a git repository.
 #[deriving(Clone)]
@@ -13,7 +14,7 @@ pub struct RemoteBranch {
 }
 
 /// Represents a SHA hash used by git.
-#[deriving(Clone, Eq, IterBytes)]
+#[deriving(Clone, Eq, Hash)]
 pub struct Sha {
     value: ~str
 }
@@ -33,8 +34,8 @@ impl Repo {
             info!("{} already exists, reusing", dir.display());
         } else {
             // there's away to checkout into an external dir?
-            let run::ProcessOutput { status, output, error } =
-                run::process_output("git",
+            let ProcessOutput { status, output, error } =
+                Process::output("git",
                                     [~"clone",
                                      // XXX this shouldn't be using strings... :(
                                      format!("{}", self.path.display()),
@@ -53,11 +54,11 @@ impl Repo {
 
     /// Convert a revision to a hash. `None` on failure.
     pub fn rev_parse(&self, rev: &str) -> Option<Sha> {
-        let run::ProcessOutput { status, output, error } =
+        let ProcessOutput { status, output, error } =
             self.exec("git", [~"rev-parse", rev.to_owned()]);
 
         if status.success() {
-            let s = str::from_utf8_owned(output);
+            let s = str::from_utf8_owned(output).expect("non-utf8 git output!");
             Some(Sha { value: s.trim().to_owned() })
         } else {
             warn!("Repo.rev_parse failed with {}: {} {}",
@@ -77,7 +78,7 @@ impl Repo {
     /// understand. `false` on failure.
     #[allow(unused_variable)] // error handling should be better
     pub fn checkout(&self, rev: &str) -> bool {
-        let run::ProcessOutput { status, output, error } =
+        let ProcessOutput { status, output, error } =
             self.exec("git", [~"checkout", rev.to_owned()]);
         if !status.success() {
             warn!("Repo.checkout failed with {}: {} {}",
@@ -90,7 +91,7 @@ impl Repo {
 
     /// Pull from a remote
     pub fn pull(&self, remote_branch: &RemoteBranch) -> bool {
-        let run::ProcessOutput { status, output, error } =
+        let ProcessOutput { status, output, error } =
             self.exec("git", [~"pull",
                               remote_branch.name.to_owned(),
                               remote_branch.branch.to_owned()]);
@@ -105,21 +106,23 @@ impl Repo {
 
     /// Run the given command with the given args in the root of this
     /// git repo.
-    pub fn exec(&self, name: &str, args: &[~str]) -> run::ProcessOutput {
-        let opts = run::ProcessOptions {
-            dir: Some(&self.path),
-            .. run::ProcessOptions::new()
+    pub fn exec(&self, name: &str, args: &[~str]) -> ProcessOutput {
+        let opts = ProcessConfig {
+            program: name,
+            args: args,
+            cwd: Some(&self.path),
+            .. ProcessConfig::new()
         };
 
-        let mut process = run::Process::new(name, args, opts).unwrap();
-        process.finish_with_output()
+        let mut process = Process::configure(opts).unwrap();
+        process.wait_with_output()
     }
 
     /// Get a UNIX timestamp of the commit date. `None` on failure.
     pub fn ctime(&self, hash: &Sha) -> Option<i64> {
         let time = self.exec("git", &[~"log", hash.value.clone(),
                                       ~"-1", ~"--format=%ct"]).output;
-        let time = str::from_utf8(time);
+        let time = str::from_utf8(time).expect("non-utf8 git output!");
         from_str(time.trim())
     }
 }

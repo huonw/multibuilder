@@ -2,15 +2,23 @@
 
 #[deny(warnings)];
 
-extern mod extra;
-use std::{str, run};
-use std::hashmap::HashSet;
-use std::io::{Append, ReadWrite, stdout, File, timer};
+extern crate extra;
+extern crate collections;
+extern crate sync;
+extern crate serialize;
+extern crate getopts;
+extern crate glob;
+extern crate term;
 
-use extra::arc::Arc;
-use extra::{glob, json};
-use extra::serialize::Decodable;
-use extra::getopts::groups;
+use std::str;
+use collections::HashSet;
+use std::comm::{Data, Empty, Disconnected};
+use std::io::{Append, ReadWrite, stdout, File, timer};
+use std::io::process::Process;
+
+use sync::Arc;
+use serialize::Decodable;
+use serialize::json;
 
 use git::{Repo, Sha};
 use commit_walker::CommitWalker;
@@ -67,8 +75,8 @@ pub struct Command {
 impl Config {
     fn load(p: &Path) -> Config {
         match File::open(p) {
-            None => fail!("couldn't open {}", p.display()),
-            Some(ref mut reader) => {
+            Err(e) => fail!("couldn't open {} ({})", p.display(), e),
+            Ok(ref mut reader) => {
                 let msg = format!("{} is invalid json", p.display());
                 let json = json::from_reader(reader as &mut Reader).ok().expect(msg);
                 Decodable::decode(&mut json::Decoder::new(json))
@@ -81,16 +89,16 @@ fn main() {
     let args = std::os::args();
 
     let opts =
-        ~[groups::optopt("c", "config", "configuration file (default ./config.json)", "PATH"),
-          groups::optopt("a", "already-built",
+        ~[getopts::optopt("c", "config", "configuration file (default ./config.json)", "PATH"),
+          getopts::optopt("a", "already-built",
                          "file of hashes already built (default ./already-built.txt)", "PATH"),
-          groups::optflag("h", "help", "show this help message")];
+          getopts::optflag("h", "help", "show this help message")];
 
-    let (config_path, already_built_path) = match groups::getopts(args.tail(), opts) {
+    let (config_path, already_built_path) = match getopts::getopts(args.tail(), opts) {
         Err(err) => fail!(err.to_err_msg()),
         Ok(matches) => {
             if matches.opt_present("h") || matches.opt_present("help") {
-                println(groups::usage(args[0], opts));
+                println!("{}", getopts::usage(args[0], opts));
                 return;
             }
 
@@ -121,9 +129,10 @@ fn main() {
     let already_built_file = File::open_mode(&already_built_path, Append, ReadWrite);
 
     let mut already_built_file =
-        already_built_file.expect(format!("Error opening {}", already_built_path.display()));
+        already_built_file.ok().expect(format!("Error opening {}", already_built_path.display()));
 
-    let text = str::from_utf8_owned(already_built_file.read_to_end());
+    let text = str::from_utf8_owned(already_built_file.read_to_end().unwrap())
+        .expect("already-built non-utf8!");
 
     for hash in text.lines() {
         already_built.insert(git::Sha { value: hash.split(':').next().unwrap().to_owned() });
@@ -178,10 +187,9 @@ fn main() {
         if workers.is_empty() {
             info!("No more builds, running when_finished");
             for cmd in config.when_finished.iter() {
-                use std::run::ProcessOptions;
                 debug!("Running {:?}", cmd);
-                let mut result = run::Process::new(cmd.name, cmd.args, ProcessOptions::new()).unwrap();
-                let result = result.finish_with_output();
+                let mut result = Process::new(cmd.name, cmd.args).unwrap();
+                let result = result.wait_with_output();
 
                 if !result.status.success() {
                     error!("{} failed", cmd.name);
@@ -193,99 +201,97 @@ fn main() {
         // we need to remove items mid-iteration.
         // FIXME using select + a timeout would be nicer here?
         let mut found_a_message = false;
-        let mut term = extra::term::Terminal::new(stdout()).unwrap();
+        let mut term = term::Terminal::new(stdout()).unwrap();
         'scanner: for i in range(0, workers.len()) {
-            if workers[i].stream.peek() {
-                found_a_message = true;
+            match workers[i].stream.try_recv() {
+                // stream closed.
+                Disconnected => { workers.swap_remove(i); },
+                Empty => (),
+                // it was the crushing disappointment of failure. :(
+                Data(build::Failure(hash)) => {
+                    found_a_message = true;
+                    term.fg(term::color::RED).unwrap();
+                    println!("{} failed.", hash.value);
+                    term.reset().unwrap();
 
-                // something's been sent back to us!
-                match workers[i].stream.try_recv() {
-                    // stream closed.
-                    None => { workers.swap_remove(i); },
-                    // it was the crushing disappointment of failure. :(
-                    Some(build::Failure(hash)) => {
-                        term.fg(extra::term::color::RED);
-                        println!("{} failed.", hash.value);
-                        term.reset();
+                    walker.register_built(hash.clone(), false);
+                }
+                // \o/ we won!
+                Data(build::Success(loc, hash)) => {
+                    found_a_message = true;
+                    term.fg(term::color::GREEN).unwrap();
+                    println!("{} succeeded.", hash.value);
+                    term.reset().unwrap();
 
-                        walker.register_built(hash.clone(), false);
-                    }
-                    // \o/ we won!
-                    Some(build::Success(loc, hash)) => {
-                        term.fg(extra::term::color::GREEN);
-                        println!("{} succeeded.", hash.value);
-                        term.reset();
+                    // FIXME: break this out.
+                    match config.output {
+                        None => {}
+                        Some(ref output) => {
+                            let suboutput_dir = Path::new(output.parent_dir.as_slice())
+                                .join(hash.value.as_slice());
 
-                        // FIXME: break this out.
-                        match config.output {
-                            None => {}
-                            Some(ref output) => {
-                                let suboutput_dir = Path::new(output.parent_dir.as_slice())
-                                    .join(hash.value.as_slice());
+                            // create the final output directory.
+                            let mkdir = Process::output("mkdir",
+                                                            [~"-p",
+                                                             format!("{}",
+                                                                     suboutput_dir.display())]).unwrap();
+                            if !mkdir.status.success() {
+                                fail!("mkdir failed on {} with {}",
+                                      suboutput_dir.display(),
+                                      std::str::from_utf8(mkdir.error));
+                            }
 
-                                // create the final output directory.
-                                let mkdir = run::process_output("mkdir",
-                                                                [~"-p",
-                                                                 format!("{}",
-                                                                         suboutput_dir.display())]).unwrap();
-                                if !mkdir.status.success() {
-                                    fail!("mkdir failed on {} with {}",
-                                          suboutput_dir.display(),
-                                          std::str::from_utf8(mkdir.error));
-                                }
+                            match loc {
+                                build::Local(p) => {
+                                    // move some subdirectory of the final
+                                    // output (in `p`) to the appropriate
+                                    // place.
+                                    let mut move_args: ~[~str] = output.to_move.map(|s| {
+                                        let glob_path = p.join(s.as_slice());
+                                        let glob_str = format!("{}", glob_path.display());
+                                        let glob = glob::glob(glob_str);
 
-                                match loc {
-                                    build::Local(p) => {
-                                        // move some subdirectory of the final
-                                        // output (in `p`) to the appropriate
-                                        // place.
-                                        let mut move_args: ~[~str] = output.to_move.map(|s| {
-                                            let glob_path = p.join(s.as_slice());
-                                            let glob_str = format!("{}", glob_path.display());
-                                            let glob = glob::glob(glob_str);
+                                        // XXX shouldn't be using strings here :(
+                                        glob.map(|x| format!("{}", x.display()))
+                                            .to_owned_vec()
+                                    }).concat_vec();
+                                    move_args.push(~"-vt");
+                                    // XXX strings
+                                    move_args.push(format!("{}", suboutput_dir.display()));
 
-                                            // XXX shouldn't be using strings here :(
-                                            glob.map(|x| format!("{}", x.display()))
-                                                .to_owned_vec()
-                                        }).concat_vec();
-                                        move_args.push(~"-vt");
-                                        // XXX strings
-                                        move_args.push(format!("{}", suboutput_dir.display()));
+                                    // move what we want.
+                                    let mv = Process::output("mv", move_args).unwrap();
+                                    if !mv.status.success() {
+                                        println!("mv: {}", str::from_utf8(mv.output));
+                                        fail!("mv failed with {}", str::from_utf8(mv.error))
+                                    }
 
-                                        // move what we want.
-                                        let mv = run::process_output("mv", move_args).unwrap();
-                                        if !mv.status.success() {
-                                            println!("mv: {}", str::from_utf8(mv.output));
-                                            fail!("mv failed with {}", str::from_utf8(mv.error))
-                                        }
-
-                                        // delete the build dir.
-                                        let rm = run::process_output("rm",
-                                                                     [~"-rf",
-                                                                      // XXX strings
-                                                                      format!("{}", p.display())]).unwrap();
-                                        if !rm.status.success() {
-                                            println!("rm: {}", str::from_utf8(rm.output));
-                                            fail!("rm failed on {} with {}", p.display(),
-                                                  std::str::from_utf8(rm.error));
-                                        }
+                                    // delete the build dir.
+                                    let rm = Process::output("rm",
+                                                                 [~"-rf",
+                                                                  // XXX strings
+                                                                  format!("{}", p.display())]).unwrap();
+                                    if !rm.status.success() {
+                                        println!("rm: {}", str::from_utf8(rm.output));
+                                        fail!("rm failed on {} with {}", p.display(),
+                                              std::str::from_utf8(rm.error));
                                     }
                                 }
                             }
                         }
+                    }
 
-                        walker.register_built(hash.clone(), true);
-                    }
+                    walker.register_built(hash.clone(), true);
                 }
-                // get back to work!
-                match walker.find_unbuilt_commit() {
-                    None => {
-                        // no more commits so remove this (now useless) worker.
-                        workers.swap_remove(i);
-                        break 'scanner;
-                    }
-                    Some(hash) => workers[i].stream.send(build::BuildHash(hash)),
+            }
+            // get back to work!
+            match walker.find_unbuilt_commit() {
+                None => {
+                    // no more commits so remove this (now useless) worker.
+                    workers.swap_remove(i);
+                    break 'scanner;
                 }
+                Some(hash) => workers[i].stream.send(build::BuildHash(hash)),
             }
         }
 
@@ -294,7 +300,7 @@ fn main() {
         // only pause if we didn't do anything in the last run.
         if !found_a_message {
             // no need to busy wait
-            let mut timer = timer::Timer::new().expect("No timer??");
+            let mut timer = timer::Timer::new().ok().expect("No timer??");
             timer.sleep(500);
         }
     }
