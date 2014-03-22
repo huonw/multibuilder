@@ -1,4 +1,3 @@
-use std::comm::{Empty, Disconnected, Data};
 use std::io::process::ProcessOutput;
 use std::{task, str};
 
@@ -28,9 +27,9 @@ impl TaskWorker {
 
         task::spawn(proc() {
             loop {
-                let instr = match inside.try_recv() {
-                    Empty | Disconnected => break, // finished
-                    Data(instr) => instr
+                let instr = match inside.recv_opt() {
+                    Some(instr) => instr,
+                    None => break,
                 };
 
                 let result = match instr {
