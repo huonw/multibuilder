@@ -13,18 +13,19 @@ extern crate term;
 #[phase(syntax, link)]
 extern crate log;
 
-use std::str;
-use collections::HashSet;
 use std::comm::{Data, Empty, Disconnected};
-use std::io::{Append, ReadWrite, stdout, File, timer};
 use std::io::process::Process;
+use std::io::{Append, ReadWrite, stdout, File, timer};
+use std::str;
+use std::vec::Vec;
 
-use sync::Arc;
+use collections::HashSet;
 use serialize::Decodable;
 use serialize::json;
+use sync::Arc;
 
-use git::{Repo, Sha};
 use commit_walker::CommitWalker;
+use git::{Repo, Sha};
 
 pub mod commit_walker;
 pub mod git;
@@ -171,7 +172,7 @@ fn main() {
     // start the workers a-working. This vec contains a worker iff
     // it's currently working (or just finished a job); they get
     // removed when we've finished (e.g. run out of commits).
-    let mut workers = ~[];
+    let mut workers = Vec::with_capacity(num_workers);
     for i in range(0, num_workers) {
         match walker.find_unbuilt_commit() {
             None => { info!("No more commits to build"); break },
@@ -206,7 +207,7 @@ fn main() {
         let mut found_a_message = false;
         let mut term = term::Terminal::new(stdout()).unwrap();
         'scanner: for i in range(0, workers.len()) {
-            match workers[i].stream.try_recv() {
+            match workers.get(i).stream.try_recv() {
                 // stream closed.
                 Disconnected => { workers.swap_remove(i); },
                 Empty => (),
@@ -294,7 +295,7 @@ fn main() {
                     workers.swap_remove(i);
                     break 'scanner;
                 }
-                Some(hash) => workers[i].stream.send(build::BuildHash(hash)),
+                Some(hash) => workers.get(i).stream.send(build::BuildHash(hash)),
             }
         }
 

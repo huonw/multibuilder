@@ -14,7 +14,7 @@ pub struct RemoteBranch {
 }
 
 /// Represents a SHA hash used by git.
-#[deriving(Clone, Eq, Hash)]
+#[deriving(Clone, Eq, Hash, Show)]
 pub struct Sha {
     value: ~str
 }

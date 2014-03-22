@@ -50,6 +50,7 @@ impl TaskWorker {
                     }
                 };
 
+                debug!("Finished a built with {}", result);
                 // finished this build.
                 inside.send(result)
             }

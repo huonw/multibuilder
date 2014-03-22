@@ -1,5 +1,7 @@
 use git::Sha;
+use std::fmt;
 
+#[deriving(Show)]
 pub enum BuildInstruction {
     BuildHash(Sha)
 }
@@ -10,6 +12,14 @@ pub enum BuiltLocation {
     Local(Path),
 }
 
+impl fmt::Show for BuiltLocation {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let Local(ref p) = *self;
+        write!(f.buf, "Local({})", p.display())
+    }
+}
+
+#[deriving(Show)]
 pub enum BuildResult {
     Success(BuiltLocation, Sha),
     Failure(Sha)
