@@ -1,13 +1,15 @@
-use std::{task, str};
-use std::io::process::ProcessOutput;
 use std::comm::{Empty, Disconnected, Data};
-use sync::DuplexStream;
+use std::io::process::ProcessOutput;
+use std::{task, str};
+
+use sync;
 use sync::Arc;
+use sync::DuplexStream;
 
 use Command;
-use git::Repo;
-use build;
 use build::{BuildInstruction, BuildResult};
+use build;
+use git::Repo;
 
 pub struct TaskWorker {
     stream: DuplexStream<BuildInstruction, BuildResult>
@@ -19,7 +21,7 @@ impl TaskWorker {
     pub fn new(build_dir: Path,
                canonical_repo: Arc<Repo>,
                build_commands: Arc<~[Command]>) -> TaskWorker {
-        let (outside, inside) = DuplexStream::new();
+        let (outside, inside) = sync::duplex();
         let ret = TaskWorker {
             stream: outside
         };

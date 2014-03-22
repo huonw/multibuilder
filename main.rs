@@ -1,14 +1,17 @@
-#[feature(macro_rules)];
+#[crate_id = "multibuilder"];
+
+#[feature(macro_rules, phase)];
 
 #[deny(warnings)];
 
-extern crate extra;
 extern crate collections;
 extern crate sync;
 extern crate serialize;
 extern crate getopts;
 extern crate glob;
 extern crate term;
+#[phase(syntax, link)]
+extern crate log;
 
 use std::str;
 use collections::HashSet;
