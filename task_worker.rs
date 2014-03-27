@@ -14,6 +14,12 @@ pub struct TaskWorker {
     stream: DuplexStream<BuildInstruction, BuildResult>
 }
 
+impl Drop for TaskWorker {
+    fn drop(&mut self) {
+        error!("TaskWorker dropped!")
+    }
+}
+
 impl TaskWorker {
     /// Create a new TaskWorker, which does builds in build_dir,
     /// cloning from `canonical_repo`.
@@ -29,7 +35,10 @@ impl TaskWorker {
             loop {
                 let instr = match inside.recv_opt() {
                     Some(instr) => instr,
-                    None => break,
+                    None => {
+                        debug!("main task hung up? bailing");
+                        break
+                    }
                 };
 
                 let result = match instr {
@@ -38,10 +47,10 @@ impl TaskWorker {
 
                         // foo/bar/0088119922aa33bb...77ff
                         let hash_dir = build_dir.join(hash.value.as_slice());
-                        let subrepo = canonical_repo.get().new_subrepo(hash_dir);
+                        let subrepo = canonical_repo.new_subrepo(hash_dir);
                         subrepo.checkout(hash.value);
 
-                        if run_build(&subrepo, build_commands.get().as_slice()) {
+                        if run_build(&subrepo, build_commands.as_slice()) {
                             build::Success(build::Local(subrepo.path), hash)
                         } else {
                             build::Failure(hash)

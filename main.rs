@@ -13,7 +13,6 @@ extern crate term;
 #[phase(syntax, link)]
 extern crate log;
 
-use std::comm::{Data, Empty, Disconnected};
 use std::io::process::Process;
 use std::io::{Append, ReadWrite, stdout, File, timer};
 use std::str;
@@ -163,7 +162,7 @@ fn main() {
 
     let build_commands = Arc::new(config.build_commands.clone());
 
-    let mut walker = CommitWalker::new(main_repo.get(),
+    let mut walker = CommitWalker::new(&*main_repo,
                                        already_built,
                                        already_built_file,
                                        config.pull_from.as_ref(),
@@ -207,12 +206,14 @@ fn main() {
         let mut found_a_message = false;
         let mut term = term::Terminal::new(stdout()).unwrap();
         'scanner: for i in range(0, workers.len()) {
-            match workers.get(i).stream.try_recv() {
+            match workers.get(i).stream.recv_opt() {
                 // stream closed.
-                Disconnected => { workers.swap_remove(i); },
-                Empty => (),
+                None => {
+                    debug!("removing a worker, other end hung up");
+                    workers.swap_remove(i);
+                },
                 // it was the crushing disappointment of failure. :(
-                Data(build::Failure(hash)) => {
+                Some(build::Failure(hash)) => {
                     found_a_message = true;
                     term.fg(term::color::RED).unwrap();
                     println!("{} failed.", hash.value);
@@ -221,7 +222,7 @@ fn main() {
                     walker.register_built(hash.clone(), false);
                 }
                 // \o/ we won!
-                Data(build::Success(loc, hash)) => {
+                Some(build::Success(loc, hash)) => {
                     found_a_message = true;
                     term.fg(term::color::GREEN).unwrap();
                     println!("{} succeeded.", hash.value);
@@ -256,8 +257,7 @@ fn main() {
                                         let glob = glob::glob(glob_str);
 
                                         // XXX shouldn't be using strings here :(
-                                        glob.map(|x| format!("{}", x.display()))
-                                            .to_owned_vec()
+                                        glob.map(|x| format!("{}", x.display())).collect::<~[~str]>()
                                     }).concat_vec();
                                     move_args.push(~"-vt");
                                     // XXX strings
@@ -292,6 +292,7 @@ fn main() {
             match walker.find_unbuilt_commit() {
                 None => {
                     // no more commits so remove this (now useless) worker.
+                    debug!("Removing worker, it's useless now");
                     workers.swap_remove(i);
                     break 'scanner;
                 }
