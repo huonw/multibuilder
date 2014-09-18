@@ -1,7 +1,7 @@
 use git::{Repo, Sha, RemoteBranch};
 use std;
 use std::io::fs::File;
-use collections::HashSet;
+use std::collections::HashSet;
 
 pub struct CommitWalker<'a> {
     repo: &'a Repo,

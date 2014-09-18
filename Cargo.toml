@@ -1,0 +1,12 @@
+[package]
+
+name = "multibuilder"
+version = "1.0.0"
+authors = [
+"Huon Wilson <dbau.pp@gmail.com",
+"Corey Richardson <corey@octayn.net>",
+]
+
+[dependencies.glob]
+
+git = "https://github.com/rust-lang/glob"

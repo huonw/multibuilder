@@ -15,7 +15,7 @@ pub enum BuiltLocation {
 impl fmt::Show for BuiltLocation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Local(ref p) = *self;
-        write!(f.buf, "Local({})", p.display())
+        write!(f, "Local({})", p.display())
     }
 }
 
