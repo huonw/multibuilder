@@ -95,7 +95,7 @@ fn main() {
           getopts::optflag("h", "help", "show this help message")];
 
     let (config_path, already_built_path) = match getopts::getopts(args.tail(), opts.as_slice()) {
-        Err(err) => fail!(err.to_err_msg()),
+        Err(err) => fail!("{}", err),
         Ok(matches) => {
             if matches.opt_present("h") || matches.opt_present("help") {
                 println!("{}", getopts::usage(args[0].as_slice(), opts.as_slice()));

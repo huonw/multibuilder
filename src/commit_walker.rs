@@ -43,10 +43,11 @@ impl<'r> CommitWalker<'r> {
     }
 
     pub fn find_unbuilt_commit(&mut self) -> Option<Sha> {
-        let CommitWalker { repo: ref repo,
-            next_candidate: ref mut next_candidate,
-            in_progress: ref mut in_progress,
-            already_built: ref already_built,
+        let CommitWalker {
+            ref repo,
+            ref mut next_candidate,
+            ref mut in_progress,
+            ref mut already_built,
             ..
         } = *self;
 
